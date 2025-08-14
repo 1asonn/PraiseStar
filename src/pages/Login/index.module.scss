@@ -1,0 +1,259 @@
+*{
+    box-sizing: border-box;
+}
+
+// PC端
+.container {
+    width: 100%;
+    height: 100vh; /* 动态视口高度 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(90deg, #e2e2e2, #c9d6ff);
+    background-color: #7494ec;
+}
+
+.Form {
+    width: 850px;
+    height: 550px;
+    background-color: #fff;
+    border-radius: 30px;
+    margin: 20px;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.LoginFormBox{
+    position:absolute;
+    opacity: 1;
+    right: 0;
+    width: 50%;
+    height: 100%;
+    display: flex;
+    flex-direction:column;
+    align-items: center;
+    text-align: center;
+    padding: 40px;
+    transition: opacity 0.3s ease-in-out;
+
+    form{
+        width: 100%;
+    }
+}
+
+.RegisterFormBox{
+    position:absolute;
+    opacity: 0;
+    left: 0;
+    width: 50%;
+    height: 100%;
+    display: flex;
+    flex-direction:column;
+    align-items: center;
+    text-align: center;
+    padding: 40px;
+    transition: opacity 0.3s ease-in-out;
+
+    form{
+        width: 100%;
+    }
+}
+    
+.inputBox{
+    position: relative;
+    margin:20px 0;
+    input{
+        width: 100%;
+        padding:13px;
+        border:none;
+        outline:none;
+        border-radius: 8px;
+        box-sizing:border-box;
+        background-color:#eee;
+        color:#333;
+        font-size:16px;
+    }
+    i{
+        position: absolute;
+        top:50%;
+        right:5%;
+        transform: translateY(-50%);
+    }
+
+}
+
+.btn{
+    width:100%;
+    height: 48px;
+    border-radius:8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    background-color:#7494ec;
+    border: none;
+    font-size:16px;
+    cursor: pointer;
+    color: white;
+}
+
+.registerBtn{
+    background-color:transparent;
+    color:white;
+    border: 1px solid white;
+    margin-bottom: 30px;
+    width: 50%;
+    padding: 10px 20px;
+}
+
+.loginBtn{
+    padding: 10px 20px;
+    width: 50%;
+    background-color:transparent;
+    color:white;
+    border: 1px solid white;
+    margin-bottom: 30px;
+}
+
+
+// 滑动轨道
+.toggleBox{
+    position:relative;
+    width:100%;
+    height:100%;
+    overflow: hidden;
+    pointer-events: none;
+}
+.togglePanel{
+    width:50%;
+    height:100%;
+    position:absolute;
+    display:flex;
+    flex-direction:column;
+    justify-content: center;
+    align-items:center;
+    text-align:center;
+    padding:40px;
+    transition:0.6s ease-in-out;
+    z-index: 2;
+    color:#fff;
+    font-size:16px;
+    pointer-events: visible;
+}
+.left{
+    left:0;
+    transition-delay: 1.2s;
+}
+.right{
+    right:-50%;
+    transition-delay: 0.6s;
+}
+
+.toggleBox::before {
+    content: '';
+    position: absolute;
+    left: -250%;
+    width: 300%;
+    height: 100%;
+    background-color: #7494ec;
+    z-index: 2;
+    border-radius: 180px;
+    transition: 1.8s ease-in-out;
+}
+
+
+// 滑至右侧
+:global(.active) .toggleBox::before{
+    left:50%;
+}
+
+
+:global(.active) .togglePanel.left{
+    left:-50%;
+    transition-delay: 0.6s;
+}
+
+:global(.active) .togglePanel.right{
+    right:0;
+    transition-delay: 1.2s;
+}
+
+:global(.active) .LoginFormBox{
+    opacity: 0;
+}
+:global(.active) .RegisterFormBox{
+    opacity: 1;
+}
+
+// 移动端
+@media (max-width: 768px) {
+    .container {
+        min-height: 100vh;
+        touch-action: none;
+    }
+    .Form{
+        height: 100%;
+        width: 100%;
+        margin: 0; 
+        border-radius: 0;
+    }
+
+    .toggleBox::before{
+        left:0;
+        width:100%;
+        top:-270%;
+        height: 300%;
+        border-radius: 20vw;
+    }
+
+    .LoginFormBox{
+        bottom: 0;
+        width: 100%;
+        height: 70%;
+        transition: bottom 0.6s ease-in-out, opacity 0.3s ease-in-out;
+        transition-delay: 0.6s;
+    }
+
+    .RegisterFormBox{
+        top: -30%;
+        width: 100%;
+        height: 70%;
+        transition: top 0.6s ease-in-out, opacity 0.3s ease-in-out;
+        transition-delay: 0.6s;
+    }
+    .togglePanel{
+        width: 100%;
+        height: 30%;
+    }
+
+    .togglePanel.left{
+        top:0;
+    }
+
+    .togglePanel.right{
+        bottom:-30%;
+        right:0;
+    }
+
+    // 切换表单时的样式变动
+    // 滑至下方
+    :global(.active) .toggleBox::before{
+        left: 0;
+        width: 100%;
+        top: 70%;
+        height: 300%;
+        border-radius: 20vw;
+    }
+
+    :global(.active) .togglePanel.left{
+        top: -30%;
+        left: 0;
+    }
+    
+    :global(.active) .togglePanel.right{
+        bottom: 0;
+    }
+
+    :global(.active) .RegisterFormBox{
+        top: 0;
+    }
+
+}

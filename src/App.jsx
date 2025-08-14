@@ -1,0 +1,69 @@
+import React from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import Layout from './components/Layout'
+import UserDashboard from './pages/User/Dashboard'
+import UserGive from './pages/User/Give'
+import UserRedeem from './pages/User/Redeem'
+import UserRanking from './pages/User/Ranking'
+import AdminDashboard from './pages/Admin/Dashboard'
+import AdminUsers from './pages/Admin/Users'
+import AdminStars from './pages/Admin/Stars'
+import AdminGifts from './pages/Admin/Gifts'
+import AdminBulletScreen from './pages/Admin/BulletScreen'
+import Login from './pages/Login'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
+
+// 路由守卫组件
+const ProtectedRoute = ({ children, requireAdmin = false }) => {
+  const { user, isAuthenticated } = useAuth()
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+  
+  if (requireAdmin && !user?.isAdmin) {
+    return <Navigate to="/user" replace />
+  }
+  
+  return children
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<Navigate to="/user" replace />} />
+          
+          {/* 普通用户路由 */}
+          <Route path="/user" element={
+            <ProtectedRoute>
+              <Layout userType="user" />
+            </ProtectedRoute>
+          }>
+            <Route index element={<UserDashboard />} />
+            <Route path="give" element={<UserGive />} />
+            <Route path="redeem" element={<UserRedeem />} />
+            <Route path="ranking" element={<UserRanking />} />
+          </Route>
+          
+          {/* 管理员路由 */}
+          <Route path="/admin" element={
+            <ProtectedRoute requireAdmin>
+              <Layout userType="admin" />
+            </ProtectedRoute>
+          }>
+            <Route index element={<AdminDashboard />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="stars" element={<AdminStars />} />
+            <Route path="gifts" element={<AdminGifts />} />
+            <Route path="bullet-screen" element={<AdminBulletScreen />} />
+          </Route>
+        </Routes>
+      </Router>
+    </AuthProvider>
+  )
+}
+
+export default App
