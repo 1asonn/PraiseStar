@@ -86,11 +86,26 @@ module.exports = {
       directory: path.join(__dirname, 'dist')
     },
     compress: true,
-    port: 3000,
+    port: process.env.PORT || 8080,
     open: true,
     hot: true,
     historyApiFallback: true,
-    host: '0.0.0.0'
+    host: '0.0.0.0',
+    // 添加代理配置解决CORS问题
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false,
+        logLevel: 'debug',
+        onProxyReq: (proxyReq, req, res) => {
+          console.log('代理请求:', req.method, req.url);
+        },
+        onProxyRes: (proxyRes, req, res) => {
+          console.log('代理响应:', proxyRes.statusCode, req.url);
+        }
+      }
+    }
   },
 
   optimization: {

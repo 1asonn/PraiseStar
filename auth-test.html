@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>认证状态测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button {
+            background-color: #1890ff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #40a9ff;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.authenticated {
+            background-color: #f6ffed;
+            border: 1px solid #b7eb8f;
+        }
+        .status.not-authenticated {
+            background-color: #fff2f0;
+            border: 1px solid #ffccc7;
+        }
+    </style>
+</head>
+<body>
+    <h1>认证状态测试工具</h1>
+    
+    <div class="test-section">
+        <h2>当前认证状态</h2>
+        <div id="authStatus" class="status">检查中...</div>
+        <button onclick="checkAuthStatus()">刷新状态</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>本地存储管理</h2>
+        <button onclick="simulateLogin()">模拟登录</button>
+        <button onclick="clearStorage()">清除本地存储</button>
+        <button onclick="showStorage()">显示本地存储</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>页面刷新测试</h2>
+        <button onclick="refreshPage()">刷新页面</button>
+        <p>说明：先模拟登录，然后刷新页面，检查认证状态是否保持</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>测试步骤</h2>
+        <ol>
+            <li>点击"模拟登录"设置认证信息</li>
+            <li>检查认证状态显示为"已认证"</li>
+            <li>点击"刷新页面"</li>
+            <li>页面刷新后应该仍然显示"已认证"状态</li>
+        </ol>
+    </div>
+
+    <script>
+        function checkAuthStatus() {
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
+            const statusDiv = document.getElementById('authStatus');
+            
+            if (token && user) {
+                try {
+                    const userData = JSON.parse(user);
+                    statusDiv.innerHTML = `
+                        <div class="success">✅ 已认证</div>
+                        <div>用户: ${userData.name}</div>
+                        <div>手机: ${userData.phone}</div>
+                        <div>管理员: ${userData.isAdmin ? '是' : '否'}</div>
+                        <div>Token: ${token.substring(0, 20)}...</div>
+                    `;
+                    statusDiv.className = 'status authenticated';
+                } catch (error) {
+                    statusDiv.innerHTML = '<div class="error">❌ 用户数据解析失败</div>';
+                    statusDiv.className = 'status not-authenticated';
+                }
+            } else {
+                statusDiv.innerHTML = '<div class="error">❌ 未认证</div>';
+                statusDiv.className = 'status not-authenticated';
+            }
+        }
+        
+        function simulateLogin() {
+            // 模拟登录成功后的数据
+            const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.token';
+            const mockUser = {
+                id: 1,
+                name: '测试用户',
+                phone: '13800138001',
+                department: '测试部门',
+                position: '测试职位',
+                isAdmin: false,
+                monthlyAllocation: 100,
+                availableToGive: 80,
+                receivedThisMonth: 45,
+                receivedThisQuarter: 135,
+                receivedThisYear: 450,
+                redeemedThisYear: 132,
+                availableToRedeem: 318
+            };
+            
+            localStorage.setItem('token', mockToken);
+            localStorage.setItem('user', JSON.stringify(mockUser));
+            
+            checkAuthStatus();
+            alert('模拟登录成功！');
+        }
+        
+        function clearStorage() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            checkAuthStatus();
+            alert('本地存储已清除！');
+        }
+        
+        function showStorage() {
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
+            
+            let message = '本地存储内容:\n\n';
+            message += `Token: ${token || '无'}\n\n`;
+            message += `User: ${user || '无'}`;
+            
+            alert(message);
+        }
+        
+        function refreshPage() {
+            window.location.reload();
+        }
+        
+        // 页面加载时检查状态
+        window.addEventListener('load', () => {
+            checkAuthStatus();
+        });
+    </script>
+</body>
+</html>

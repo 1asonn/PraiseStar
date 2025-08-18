@@ -1,85 +1,84 @@
-// 模拟API服务
-import { 
-  mockUsers, 
-  mockGifts, 
-  mockRedemptions, 
-  mockGiveRecords,
-  getUserRankings,
-  getSystemStats
-} from '../data/mockData'
+// 新的API服务 - 使用真实的API接口
+import { authService } from './authService'
+import { userService } from './userService'
+import { starsService } from './starsService'
+import { giftsService } from './giftsService'
+import { rankingsService } from './rankingsService'
+import { bulletsService } from './bulletsService'
 
-// 模拟网络延迟
-const delay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms))
-
-// 模拟API响应
-const createResponse = (data, success = true, message = '') => ({
-  success,
-  data,
-  message
-})
+// 为了保持向后兼容性，保留原有的API结构
+// 但现在调用新的服务层
 
 // 用户相关API
 export const userApi = {
   // 登录
   login: async (phone) => {
-    await delay()
-    const user = mockUsers.find(u => u.phone === phone)
-    if (user) {
-      return createResponse(user, true, '登录成功')
+    try {
+      const response = await authService.login(phone)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '登录失败' }
     }
-    return createResponse(null, false, '用户不存在')
   },
 
   // 获取用户信息
   getUserInfo: async (userId) => {
-    await delay()
-    const user = mockUsers.find(u => u.id === userId)
-    if (user) {
-      return createResponse(user, true)
+    try {
+      const response = await userService.getUserById(userId)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '获取用户信息失败' }
     }
-    return createResponse(null, false, '用户不存在')
   },
 
   // 获取所有用户
-  getAllUsers: async () => {
-    await delay()
-    return createResponse(mockUsers, true)
+  getAllUsers: async (params = {}) => {
+    try {
+      const response = await userService.getUserList(params)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '获取用户列表失败' }
+    }
   },
 
   // 添加用户
   addUser: async (userData) => {
-    await delay()
-    const newUser = {
-      ...userData,
-      id: Date.now(),
-      monthlyAllocation: userData.isAdmin ? 200 : 100,
-      availableToGive: userData.isAdmin ? 200 : 100,
-      receivedThisMonth: 0,
-      receivedThisQuarter: 0,
-      receivedThisYear: 0,
-      redeemedThisYear: 0,
-      availableToRedeem: 0,
-      ranking: mockUsers.length + 1
+    try {
+      const response = await userService.addUser(userData)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '添加用户失败' }
     }
-    return createResponse(newUser, true, '用户添加成功')
   },
 
   // 更新用户
   updateUser: async (userId, userData) => {
-    await delay()
-    return createResponse({ ...userData, id: userId }, true, '用户更新成功')
+    try {
+      const response = await userService.updateUser(userId, userData)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '更新用户失败' }
+    }
   },
 
   // 删除用户
   deleteUser: async (userId) => {
-    await delay()
-    return createResponse(null, true, '用户删除成功')
+    try {
+      const response = await userService.deleteUser(userId)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '删除用户失败' }
+    }
   },
 
   // 调整用户赞赞星
   adjustUserStars: async (userId, starData) => {
-    await delay()
-    return createResponse(starData, true, '赞赞星调整成功')
+    try {
+      const response = await userService.adjustUserStars(userId, starData)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '调整用户赞赞星失败' }
+    }
   }
 }
 
@@ -87,39 +86,50 @@ export const userApi = {
 export const starApi = {
   // 赠送赞赞星
   giveStars: async (fromUserId, toUserId, stars, reason, customReason) => {
-    await delay()
-    const giveRecord = {
-      id: Date.now(),
-      fromUserId,
-      toUserId,
-      stars,
-      reason,
-      customReason,
-      createTime: new Date().toLocaleString()
+    try {
+      const giveData = {
+        toUserId,
+        stars,
+        reason,
+        customReason
+      }
+      const response = await starsService.giveStars(giveData)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '赠送赞赞星失败' }
     }
-    return createResponse(giveRecord, true, '赞赞星赠送成功')
   },
 
   // 获取赠送记录
   getGiveRecords: async (userId = null) => {
-    await delay()
-    let records = mockGiveRecords
-    if (userId) {
-      records = records.filter(r => r.fromUserId === userId || r.toUserId === userId)
+    try {
+      const params = userId ? { type: 'all' } : {}
+      const response = await starsService.getGiveRecords(params)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '获取赠送记录失败' }
     }
-    return createResponse(records, true)
   },
 
   // 奖励赞赞星
   awardStars: async (userIds, stars, reason) => {
-    await delay()
-    return createResponse(null, true, '奖励赞赞星成功')
+    try {
+      const awardData = { userIds, stars, reason }
+      const response = await starsService.awardStars(awardData)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '奖励赞赞星失败' }
+    }
   },
 
   // 获取系统统计
   getSystemStats: async () => {
-    await delay()
-    return createResponse(getSystemStats(), true)
+    try {
+      const response = await starsService.getStatistics()
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '获取系统统计失败' }
+    }
   }
 }
 
@@ -127,68 +137,90 @@ export const starApi = {
 export const giftApi = {
   // 获取所有礼品
   getAllGifts: async () => {
-    await delay()
-    return createResponse(mockGifts, true)
+    try {
+      const response = await giftsService.getGiftList()
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '获取礼品列表失败' }
+    }
   },
 
   // 获取可用礼品
   getAvailableGifts: async () => {
-    await delay()
-    const availableGifts = mockGifts.filter(g => g.isActive && g.stock > 0)
-    return createResponse(availableGifts, true)
+    try {
+      const response = await giftsService.getAvailableGifts()
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '获取可用礼品失败' }
+    }
   },
 
   // 添加礼品
   addGift: async (giftData) => {
-    await delay()
-    const newGift = {
-      ...giftData,
-      id: Date.now(),
-      isActive: true
+    try {
+      const response = await giftsService.addGift(giftData)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '添加礼品失败' }
     }
-    return createResponse(newGift, true, '礼品添加成功')
   },
 
   // 更新礼品
   updateGift: async (giftId, giftData) => {
-    await delay()
-    return createResponse({ ...giftData, id: giftId }, true, '礼品更新成功')
+    try {
+      const response = await giftsService.updateGift(giftId, giftData)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '更新礼品失败' }
+    }
   },
 
   // 删除礼品
   deleteGift: async (giftId) => {
-    await delay()
-    return createResponse(null, true, '礼品删除成功')
+    try {
+      const response = await giftsService.deleteGift(giftId)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '删除礼品失败' }
+    }
   },
 
   // 切换礼品状态
   toggleGiftStatus: async (giftId) => {
-    await delay()
-    return createResponse(null, true, '礼品状态更新成功')
+    try {
+      // 这里需要先获取礼品信息，然后切换状态
+      const gift = await giftsService.getGiftById(giftId)
+      if (gift.success) {
+        const updatedData = { isActive: !gift.data.isActive }
+        const response = await giftsService.updateGift(giftId, updatedData)
+        return response
+      }
+      return { success: false, message: '获取礼品信息失败' }
+    } catch (error) {
+      return { success: false, message: error.message || '切换礼品状态失败' }
+    }
   },
 
   // 兑换礼品
   redeemGift: async (userId, giftId, deliveryInfo) => {
-    await delay()
-    const redemption = {
-      id: Date.now(),
-      userId,
-      giftId,
-      ...deliveryInfo,
-      createTime: new Date().toLocaleString(),
-      status: '处理中'
+    try {
+      const response = await giftsService.redeemGift(giftId, deliveryInfo)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '兑换礼品失败' }
     }
-    return createResponse(redemption, true, '礼品兑换成功')
   },
 
   // 获取兑换记录
   getRedemptions: async (userId = null) => {
-    await delay()
-    let redemptions = mockRedemptions
-    if (userId) {
-      redemptions = redemptions.filter(r => r.userId === userId)
+    try {
+      const response = userId 
+        ? await giftsService.getUserRedemptions()
+        : await giftsService.getAllRedemptions()
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '获取兑换记录失败' }
     }
-    return createResponse(redemptions, true)
   }
 }
 
@@ -196,17 +228,22 @@ export const giftApi = {
 export const rankingApi = {
   // 获取排名
   getRankings: async (type = 'year') => {
-    await delay()
-    const rankings = getUserRankings()
-    return createResponse(rankings, true)
+    try {
+      const response = await rankingsService.getRankings({ period: type })
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '获取排名失败' }
+    }
   },
 
   // 获取用户排名
   getUserRanking: async (userId, type = 'year') => {
-    await delay()
-    const rankings = getUserRankings()
-    const userRanking = rankings.find(r => r.id === userId)
-    return createResponse(userRanking, true)
+    try {
+      const response = await rankingsService.getUserRanking(userId, { period: type })
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '获取用户排名失败' }
+    }
   }
 }
 
@@ -214,29 +251,32 @@ export const rankingApi = {
 export const bulletScreenApi = {
   // 获取弹幕设置
   getBulletSettings: async () => {
-    await delay()
-    const settings = {
-      giveEnabled: true,
-      giveThreshold: 10,
-      rankingEnabled: true,
-      rankingTime: '09:00',
-      achievementEnabled: true,
-      achievementThreshold: 66,
-      congratulationEnabled: true
+    try {
+      const response = await bulletsService.getBulletSettings()
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '获取弹幕设置失败' }
     }
-    return createResponse(settings, true)
   },
 
   // 更新弹幕设置
   updateBulletSettings: async (settings) => {
-    await delay()
-    return createResponse(settings, true, '弹幕设置保存成功')
+    try {
+      const response = await bulletsService.batchUpdateBulletSettings(settings)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '更新弹幕设置失败' }
+    }
   },
 
   // 发送测试弹幕
   sendTestBullet: async (type, content) => {
-    await delay()
-    return createResponse(null, true, '测试弹幕发送成功')
+    try {
+      const response = await bulletsService.sendTestBullet({ type, content })
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '发送测试弹幕失败' }
+    }
   }
 }
 
@@ -244,21 +284,47 @@ export const bulletScreenApi = {
 export const uploadApi = {
   // 上传图片
   uploadImage: async (file) => {
-    await delay(1000)
-    // 模拟上传成功，返回图片URL
-    const imageUrl = `/images/uploaded/${Date.now()}.jpg`
-    return createResponse({ url: imageUrl }, true, '图片上传成功')
+    try {
+      const response = await giftsService.uploadGiftImage(file)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '上传图片失败' }
+    }
   },
 
   // 批量导入用户
   importUsers: async (file) => {
-    await delay(2000)
-    return createResponse({ count: 10 }, true, '批量导入成功，共导入10个用户')
+    try {
+      const response = await userService.importUsers(file)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '批量导入用户失败' }
+    }
   },
 
   // 导出数据
   exportData: async (type, data) => {
-    await delay(1000)
-    return createResponse({ downloadUrl: `/export/${type}_${Date.now()}.xlsx` }, true, '数据导出成功')
+    try {
+      let response
+      switch (type) {
+        case 'users':
+          response = await userService.exportUsers(data)
+          break
+        case 'stars':
+          response = await starsService.exportStarsData(data)
+          break
+        case 'gifts':
+          response = await giftsService.exportGiftData(data)
+          break
+        case 'rankings':
+          response = await rankingsService.exportRankingData(data)
+          break
+        default:
+          throw new Error('不支持的导出类型')
+      }
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '导出数据失败' }
+    }
   }
 }

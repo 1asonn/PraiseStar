@@ -1,6 +1,6 @@
 import React from 'react'
 import {useState, useEffect, useRef} from 'react' 
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { message } from 'antd'
 import styles from './index.module.scss'
 import 'boxicons/css/boxicons.min.css'
@@ -8,7 +8,7 @@ import { AddSafeBottom } from '../../utils/hooks/useSafeArea'
 import { useAuth } from '../../contexts/AuthContext'
 
 const LoginPage = () => {
-    const { login } = useAuth()
+    const { login, isAuthenticated, loading: authLoading, user } = useAuth()
     const containerRef = useRef(null)
     const FormRef = useRef(null)
     const navigate = useNavigate()
@@ -16,13 +16,22 @@ const LoginPage = () => {
     const [loginForm, setLoginForm] = useState({ phone: '', password: '' })
     const [registerForm, setRegisterForm] = useState({ username: '', password: '' })
     
-    // 应用安全底部样式
-    useEffect(() => {
-        if (containerRef.current) {
-            const cleanup = AddSafeBottom(FormRef.current, 65); // 65px是底部偏移量
-            return cleanup; // 组件卸载时清理
-        }
-    }, []);
+
+        // 应用安全底部样式
+        useEffect(() => {
+            if (containerRef.current) {
+                const cleanup = AddSafeBottom(FormRef.current, 65); // 65px是底部偏移量
+                return cleanup; // 组件卸载时清理
+            }
+        }, []);
+        
+    // 如果已经登录，重定向到对应页面
+    if (!authLoading && isAuthenticated) {
+        const redirectPath = user?.isAdmin ? '/admin' : '/user'
+        return <Navigate to={redirectPath} replace />
+    }
+    
+
 
     const handleLogin = async (e) => {
         e.preventDefault()
@@ -39,7 +48,7 @@ const LoginPage = () => {
 
         setLoading(true)
         try {
-            const result = await login(loginForm.phone)
+            const result = await login(loginForm.phone, loginForm.password)
             if (result.success) {
                 message.success('登录成功！')
                 // 根据用户类型跳转

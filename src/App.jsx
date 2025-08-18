@@ -1,6 +1,7 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
+import AuthLoading from './components/AuthLoading'
 import UserDashboard from './pages/User/Dashboard'
 import UserGive from './pages/User/Give'
 import UserRedeem from './pages/User/Redeem'
@@ -15,7 +16,12 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 
 // 路由守卫组件
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, loading } = useAuth()
+  
+  // 如果正在加载认证状态，显示加载中
+  if (loading) {
+    return <AuthLoading />
+  }
   
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />

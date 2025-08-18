@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Card,
   Table,
@@ -28,6 +28,7 @@ import {
   StarOutlined
 } from '@ant-design/icons'
 import { mockUsers } from '../../data/mockData'
+import { userApi } from '../../services/api'
 
 const { Option } = Select
 
@@ -39,6 +40,13 @@ const AdminUsers = () => {
   const [adjustingUser, setAdjustingUser] = useState(null)
   const [form] = Form.useForm()
   const [adjustForm] = Form.useForm()
+  const { getAllUsers } = userApi
+
+  useEffect(() => {
+    getAllUsers().then(res => {
+      console.log(res)
+    })
+  }, [])
 
   // 添加/编辑用户
   const handleAddEdit = (user = null) => {

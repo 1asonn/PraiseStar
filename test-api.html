@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API连接测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button {
+            background-color: #1890ff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #40a9ff;
+        }
+        #results {
+            white-space: pre-wrap;
+            font-family: monospace;
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>API连接测试工具</h1>
+    
+    <div class="test-section">
+        <h2>基础测试</h2>
+        <button onclick="testBasicConnection()">测试基础连接</button>
+        <button onclick="testCORS()">测试CORS配置</button>
+        <button onclick="testAllEndpoints()">测试所有端点</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>API测试</h2>
+        <button onclick="testLogin()">测试登录接口</button>
+        <button onclick="testUserList()">测试用户列表</button>
+        <button onclick="testGiftList()">测试礼品列表</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>测试结果</h2>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3000/api';
+        const results = document.getElementById('results');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            results.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            results.scrollTop = results.scrollHeight;
+        }
+        
+        function clearResults() {
+            results.innerHTML = '';
+        }
+        
+        async function makeRequest(url, options = {}) {
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                const data = await response.text();
+                let parsedData;
+                try {
+                    parsedData = JSON.parse(data);
+                } catch (e) {
+                    parsedData = data;
+                }
+                
+                return {
+                    ok: response.ok,
+                    status: response.status,
+                    statusText: response.statusText,
+                    data: parsedData
+                };
+            } catch (error) {
+                return {
+                    ok: false,
+                    status: 0,
+                    statusText: error.message,
+                    data: null,
+                    error: error
+                };
+            }
+        }
+        
+        async function testBasicConnection() {
+            clearResults();
+            log('开始测试基础连接...', 'info');
+            
+            const result = await makeRequest(`${API_BASE_URL}/users`);
+            
+            if (result.status === 0) {
+                log('❌ 连接失败: ' + result.statusText, 'error');
+                log('可能的原因:', 'error');
+                log('1. 后端服务未启动', 'error');
+                log('2. CORS配置问题', 'error');
+                log('3. 网络连接问题', 'error');
+            } else if (result.status === 401) {
+                log('✅ 连接成功 (需要认证)', 'success');
+                log('后端API服务正常运行', 'success');
+            } else if (result.ok) {
+                log('✅ 连接成功', 'success');
+                log('响应数据: ' + JSON.stringify(result.data, null, 2), 'info');
+            } else {
+                log(`⚠️ 连接成功但返回错误: ${result.status} ${result.statusText}`, 'error');
+                log('响应数据: ' + JSON.stringify(result.data, null, 2), 'info');
+            }
+        }
+        
+        async function testCORS() {
+            clearResults();
+            log('开始测试CORS配置...', 'info');
+            
+            // 测试OPTIONS预检请求
+            const optionsResult = await makeRequest(`${API_BASE_URL}/auth/login`, {
+                method: 'OPTIONS'
+            });
+            
+            log(`OPTIONS请求结果: ${optionsResult.status} ${optionsResult.statusText}`, 
+                optionsResult.ok ? 'success' : 'error');
+            
+            // 测试实际POST请求
+            const postResult = await makeRequest(`${API_BASE_URL}/auth/login`, {
+                method: 'POST',
+                body: JSON.stringify({ phone: 'test' })
+            });
+            
+            log(`POST请求结果: ${postResult.status} ${postResult.statusText}`, 
+                postResult.status !== 0 ? 'success' : 'error');
+            
+            if (postResult.status === 0) {
+                log('❌ CORS配置有问题，请检查后端CORS设置', 'error');
+            } else {
+                log('✅ CORS配置正常', 'success');
+            }
+        }
+        
+        async function testAllEndpoints() {
+            clearResults();
+            log('开始测试所有API端点...', 'info');
+            
+            const endpoints = [
+                { url: '/auth/login', method: 'POST', body: { phone: 'test' } },
+                { url: '/users', method: 'GET' },
+                { url: '/gifts', method: 'GET' },
+                { url: '/rankings', method: 'GET' },
+                { url: '/stars/give-records', method: 'GET' }
+            ];
+            
+            for (const endpoint of endpoints) {
+                const result = await makeRequest(`${API_BASE_URL}${endpoint.url}`, {
+                    method: endpoint.method,
+                    body: endpoint.body ? JSON.stringify(endpoint.body) : undefined
+                });
+                
+                const status = result.status === 0 ? '❌' : 
+                             result.status === 401 ? '🔒' : 
+                             result.ok ? '✅' : '⚠️';
+                
+                log(`${status} ${endpoint.method} ${endpoint.url}: ${result.status} ${result.statusText}`, 
+                    result.status === 0 ? 'error' : 'info');
+            }
+        }
+        
+        async function testLogin() {
+            clearResults();
+            log('测试登录接口...', 'info');
+            
+            const result = await makeRequest(`${API_BASE_URL}/auth/login`, {
+                method: 'POST',
+                body: JSON.stringify({ phone: '13800138001' })
+            });
+            
+            log(`登录请求结果: ${result.status} ${result.statusText}`, 
+                result.status !== 0 ? 'success' : 'error');
+            
+            if (result.data) {
+                log('响应数据: ' + JSON.stringify(result.data, null, 2), 'info');
+            }
+        }
+        
+        async function testUserList() {
+            clearResults();
+            log('测试用户列表接口...', 'info');
+            
+            const result = await makeRequest(`${API_BASE_URL}/users`);
+            
+            log(`用户列表请求结果: ${result.status} ${result.statusText}`, 
+                result.status !== 0 ? 'success' : 'error');
+            
+            if (result.data) {
+                log('响应数据: ' + JSON.stringify(result.data, null, 2), 'info');
+            }
+        }
+        
+        async function testGiftList() {
+            clearResults();
+            log('测试礼品列表接口...', 'info');
+            
+            const result = await makeRequest(`${API_BASE_URL}/gifts`);
+            
+            log(`礼品列表请求结果: ${result.status} ${result.statusText}`, 
+                result.status !== 0 ? 'success' : 'error');
+            
+            if (result.data) {
+                log('响应数据: ' + JSON.stringify(result.data, null, 2), 'info');
+            }
+        }
+        
+        // 页面加载完成后自动运行基础测试
+        window.addEventListener('load', () => {
+            log('API测试工具已加载', 'success');
+            log('点击上方按钮开始测试', 'info');
+        });
+    </script>
+</body>
+</html>
