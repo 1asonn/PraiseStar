@@ -2,8 +2,10 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import { authService } from '../services/authService'
 import { message } from 'antd'
 
+// 创建鉴权上下文
 const AuthContext = createContext()
 
+// 自定义hook，用于在组件中获取鉴权上下文
 export const useAuth = () => {
   const context = useContext(AuthContext)
   if (!context) {
@@ -12,6 +14,7 @@ export const useAuth = () => {
   return context
 }
 
+// 鉴权提供者组件，用于在应用顶层提供鉴权上下文
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -59,10 +62,10 @@ export const AuthProvider = ({ children }) => {
   }
 
   // 用户登录
-  const login = async (phone) => {
+  const login = async (phone, password) => {
     try {
       setLoading(true)
-      const response = await authService.login(phone)
+      const response = await authService.login(phone,password)
       
       if (response.success) {
         setUser(response.data.user)
@@ -138,6 +141,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
+    // 提供鉴权上下文
     <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
