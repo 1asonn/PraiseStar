@@ -15,6 +15,7 @@ const LoginPage = () => {
     const [loading, setLoading] = useState(false)
     const [loginForm, setLoginForm] = useState({ phone: '', password: '' })
     const [registerForm, setRegisterForm] = useState({ username: '', password: '' })
+    const [isSubmitting, setIsSubmitting] = useState(false)
     
 
         // 应用安全底部样式
@@ -36,6 +37,11 @@ const LoginPage = () => {
     const handleLogin = async (e) => {
         e.preventDefault()
         
+        // 防止重复提交
+        if (isSubmitting) {
+            return
+        }
+        
         if (!loginForm.phone) {
             message.warning('请输入手机号码')
             return
@@ -46,24 +52,23 @@ const LoginPage = () => {
             return
         }
 
+        setIsSubmitting(true)
         setLoading(true)
+        
         try {
             const result = await login(loginForm.phone, loginForm.password)
             if (result.success) {
-                message.success('登录成功！')
-                // 根据用户类型跳转
-                if (result.user.isAdmin) {
-                    navigate('/admin')
-                } else {
-                    navigate('/user')
-                }
+                // 登录成功后，AuthContext会自动处理重定向
+                // 不需要手动调用navigate，避免双重重定向
             } else {
                 message.error(result.message || '登录失败')
             }
         } catch (error) {
+            console.error('登录错误:', error)
             message.error('登录失败，请稍后重试')
         } finally {
             setLoading(false)
+            setIsSubmitting(false)
         }
     }
 
@@ -117,7 +122,7 @@ const LoginPage = () => {
                         <button 
                             type="submit" 
                             className={styles.btn}
-                            disabled={loading}
+                            disabled={loading || isSubmitting}
                         >
                             {loading ? '登录中...' : '登录'}
                         </button>

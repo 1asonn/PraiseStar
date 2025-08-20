@@ -56,6 +56,7 @@ export const userService = {
    * @param {Object} userData - 用户数据
    * @param {string} userData.name - 姓名
    * @param {string} userData.phone - 手机号
+   * @param {string} userData.password - 初始密码
    * @param {string} userData.department - 部门
    * @param {string} userData.position - 职位
    * @param {boolean} userData.isAdmin - 是否为管理员

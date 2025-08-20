@@ -65,18 +65,25 @@ export const AuthProvider = ({ children }) => {
   const login = async (phone, password) => {
     try {
       setLoading(true)
-      const response = await authService.login(phone,password)
+      const response = await authService.login(phone, password)
       
       if (response.success) {
+        // 先更新状态，触发重定向
         setUser(response.data.user)
         setIsAuthenticated(true)
-        message.success('登录成功')
+        
+        // 延迟显示成功消息，避免与重定向冲突
+        setTimeout(() => {
+          message.success('登录成功')
+        }, 100)
+        
         return { success: true, user: response.data.user }
       } else {
         message.error(response.message || '登录失败')
         return { success: false, message: response.message || '登录失败' }
       }
     } catch (error) {
+      console.error('登录失败:', error)
       const errorMessage = error.message || '登录失败，请稍后重试'
       message.error(errorMessage)
       return { success: false, message: errorMessage }
