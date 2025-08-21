@@ -1,5 +1,5 @@
-import React from 'react'
-import { Row, Col, Card, Statistic, Table, Progress, List, Avatar, Tag, Space } from 'antd'
+import React, { useState, useEffect } from 'react'
+import { Row, Col, Card, Statistic, Table, Progress, List, Avatar, Tag, Space, Spin, message } from 'antd'
 import {
   UserOutlined,
   TeamOutlined,
@@ -9,21 +9,104 @@ import {
   RiseOutlined,
   TrophyOutlined
 } from '@ant-design/icons'
-import { getSystemStats, getUserRankings, mockGiveRecords, mockRedemptions } from '../../data/mockData'
+import { starApi, giftApi, rankingApi } from '../../services/api'
 
 const AdminDashboard = () => {
-  const stats = getSystemStats()
-  const rankings = getUserRankings().slice(0, 5) // 前5名
-  const recentGives = mockGiveRecords.slice(0, 5)
-  const recentRedemptions = mockRedemptions.slice(0, 5)
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    overview: {
+      total_users: 0,
+      monthly_allocated: "0",
+      monthly_given: "0",
+      remaining_unused: "0"
+    },
+    activity: {
+      users_who_gave: 0,
+      users_who_gave_rate: 0,
+      users_who_received: 0,
+      users_who_received_rate: 0
+    },
+    usage: {
+      usage_rate: 0,
+      total_allocated: "0",
+      total_used: "0",
+      used_display: "0/0"
+    },
+    departments: []
+  })
+  const [rankings, setRankings] = useState([])
+  const [recentGives, setRecentGives] = useState([])
+  const [recentRedemptions, setRecentRedemptions] = useState([])
+
+  // 加载统计数据
+  const loadStatistics = async () => {
+    try {
+      setLoading(true)
+      const statsResponse = await starApi.getSystemStats()
+      if (statsResponse.success) {
+        setStats(statsResponse.data)
+      } else {
+        message.error(statsResponse.message || '获取统计数据失败')
+      }
+    } catch (error) {
+      console.error('加载统计数据失败:', error)
+      message.error('获取统计数据失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 加载排行榜数据
+  const loadRankings = async () => {
+    try {
+      const rankingsResponse = await rankingApi.getRankings('year')
+      if (rankingsResponse.success) {
+        setRankings(rankingsResponse.data.slice(0, 5)) // 前5名
+      }
+    } catch (error) {
+      console.error('加载排行榜失败:', error)
+    }
+  }
+
+  // 加载最近赠送记录
+  const loadRecentGives = async () => {
+    try {
+      const givesResponse = await starApi.getGiveRecords({ page: 1, limit: 5 })
+      if (givesResponse.success) {
+        setRecentGives(givesResponse.data.slice(0, 5))
+      }
+    } catch (error) {
+      console.error('加载最近赠送记录失败:', error)
+    }
+  }
+
+  // 加载最近兑换记录
+  const loadRecentRedemptions = async () => {
+    try {
+      const redemptionsResponse = await giftApi.getRedemptions()
+      if (redemptionsResponse.success) {
+        setRecentRedemptions(redemptionsResponse.data.slice(0, 5))
+      }
+    } catch (error) {
+      console.error('加载最近兑换记录失败:', error)
+    }
+  }
+
+  // 初始化加载数据
+  useEffect(() => {
+    const loadAllData = async () => {
+      await Promise.all([
+        loadStatistics(),
+        loadRankings(),
+        loadRecentGives(),
+        loadRecentRedemptions()
+      ])
+    }
+    loadAllData()
+  }, [])
 
   // 部门统计数据
-  const departmentStats = [
-    { department: '研发中心', totalUsers: 15, activeUsers: 12, avgStars: 45 },
-    { department: '市场部', totalUsers: 8, activeUsers: 6, avgStars: 38 },
-    { department: '人力行政部', totalUsers: 5, activeUsers: 5, avgStars: 52 },
-    { department: '总经理办', totalUsers: 2, activeUsers: 2, avgStars: 109 }
-  ]
+  const departmentStats = stats.departments || []
 
   const departmentColumns = [
     {
@@ -33,28 +116,39 @@ const AdminDashboard = () => {
     },
     {
       title: '总人数',
-      dataIndex: 'totalUsers',
-      key: 'totalUsers',
+      dataIndex: 'total_users',
+      key: 'total_users',
       align: 'center'
     },
     {
       title: '活跃人数',
-      dataIndex: 'activeUsers',
-      key: 'activeUsers',
+      dataIndex: 'active_users',
+      key: 'active_users',
       align: 'center',
       render: (activeUsers, record) => (
         <span>
           {activeUsers}
           <span style={{ color: '#666', fontSize: 12, marginLeft: 4 }}>
-            ({Math.round((activeUsers / record.totalUsers) * 100)}%)
+            ({Math.round((activeUsers / record.total_users) * 100)}%)
           </span>
         </span>
       )
     },
     {
+      title: '活跃率',
+      dataIndex: 'active_rate',
+      key: 'active_rate',
+      align: 'center',
+      render: (rate) => (
+        <span style={{ color: rate > 50 ? '#52c41a' : '#fa8c16' }}>
+          {rate}%
+        </span>
+      )
+    },
+    {
       title: '人均获赞',
-      dataIndex: 'avgStars',
-      key: 'avgStars',
+      dataIndex: 'avg_received_per_person',
+      key: 'avg_received_per_person',
       align: 'center',
       render: (avgStars) => (
         <Space>
@@ -67,13 +161,25 @@ const AdminDashboard = () => {
 
   return (
     <div>
-      {/* 系统总览统计 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      {loading && (
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '200px' 
+        }}>
+          <Spin size="large" />
+        </div>
+      )}
+            {!loading && (
+        <>
+          {/* 系统总览统计 */}
+          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={12} sm={6}>
           <Card className="card-shadow">
             <Statistic
               title="总用户数"
-              value={stats.totalUsers}
+              value={stats.overview.total_users}
               prefix={<TeamOutlined style={{ color: '#1890ff' }} />}
               valueStyle={{ color: '#1890ff' }}
             />
@@ -84,7 +190,7 @@ const AdminDashboard = () => {
           <Card className="card-shadow">
             <Statistic
               title="本月已分配"
-              value={stats.totalAllocatedThisMonth}
+              value={stats.overview.monthly_allocated}
               prefix={<StarOutlined style={{ color: '#52c41a' }} />}
               suffix="⭐"
               valueStyle={{ color: '#52c41a' }}
@@ -96,7 +202,7 @@ const AdminDashboard = () => {
           <Card className="card-shadow">
             <Statistic
               title="本月已赠送"
-              value={stats.totalGivenThisMonth}
+              value={stats.overview.monthly_given}
               prefix={<SendOutlined style={{ color: '#fa8c16' }} />}
               suffix="⭐"
               valueStyle={{ color: '#fa8c16' }}
@@ -108,7 +214,7 @@ const AdminDashboard = () => {
           <Card className="card-shadow">
             <Statistic
               title="剩余未使用"
-              value={stats.totalRemainingThisMonth}
+              value={stats.overview.remaining_unused}
               prefix={<StarOutlined style={{ color: '#eb2f96' }} />}
               suffix="⭐"
               valueStyle={{ color: '#eb2f96' }}
@@ -125,11 +231,11 @@ const AdminDashboard = () => {
               <Col span={12}>
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: 24, fontWeight: 'bold', color: '#52c41a', marginBottom: 8 }}>
-                    {stats.usersWhoGave}
+                    {stats.activity.users_who_gave}
                   </div>
                   <div style={{ color: '#666' }}>赠送用户数</div>
                   <Progress
-                    percent={Math.round((stats.usersWhoGave / stats.totalUsers) * 100)}
+                    percent={stats.activity.users_who_gave_rate}
                     size="small"
                     strokeColor="#52c41a"
                     style={{ marginTop: 8 }}
@@ -139,11 +245,11 @@ const AdminDashboard = () => {
               <Col span={12}>
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: 24, fontWeight: 'bold', color: '#1890ff', marginBottom: 8 }}>
-                    {stats.usersWhoReceived}
+                    {stats.activity.users_who_received}
                   </div>
                   <div style={{ color: '#666' }}>获赞用户数</div>
                   <Progress
-                    percent={Math.round((stats.usersWhoReceived / stats.totalUsers) * 100)}
+                    percent={stats.activity.users_who_received_rate}
                     size="small"
                     strokeColor="#1890ff"
                     style={{ marginTop: 8 }}
@@ -159,10 +265,10 @@ const AdminDashboard = () => {
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span>赞赞星使用率</span>
-                <span>{Math.round((stats.totalGivenThisMonth / stats.totalAllocatedThisMonth) * 100)}%</span>
+                <span>{stats.usage.usage_rate}%</span>
               </div>
               <Progress
-                percent={Math.round((stats.totalGivenThisMonth / stats.totalAllocatedThisMonth) * 100)}
+                percent={stats.usage.usage_rate}
                 strokeColor={{
                   '0%': '#108ee9',
                   '100%': '#87d068',
@@ -170,7 +276,7 @@ const AdminDashboard = () => {
               />
             </div>
             <div style={{ fontSize: 12, color: '#666' }}>
-              已使用 {stats.totalGivenThisMonth} / {stats.totalAllocatedThisMonth} ⭐
+              已使用 {stats.usage.used_display} ⭐
             </div>
           </Card>
         </Col>
@@ -211,14 +317,14 @@ const AdminDashboard = () => {
                     }
                     title={
                       <Space>
-                        <span>{item.name}</span>
+                        <span>{item.name || item.userName}</span>
                         <Tag color="blue" size="small">{item.department}</Tag>
                       </Space>
                     }
                     description={
                       <Space>
                         <StarOutlined style={{ color: '#fadb14' }} />
-                        <span>{item.receivedThisYear} ⭐</span>
+                        <span>{item.receivedThisYear || item.totalReceived} ⭐</span>
                       </Space>
                     }
                   />
@@ -239,10 +345,10 @@ const AdminDashboard = () => {
                     avatar={<Avatar icon={<SendOutlined />} style={{ backgroundColor: '#52c41a' }} />}
                     title={
                       <Space>
-                        <span>{item.fromUserName}</span>
+                        <span>{item.fromUserName || item.fromUser?.name}</span>
                         <span>→</span>
-                        <span>{item.toUserName}</span>
-                        <Tag color="green">+{item.stars}⭐</Tag>
+                        <span>{item.toUserName || item.toUser?.name}</span>
+                        <Tag color="green">+{item.stars || item.starCount}⭐</Tag>
                       </Space>
                     }
                     description={
@@ -251,7 +357,7 @@ const AdminDashboard = () => {
                           {item.reason === '其他' ? item.customReason : item.reason}
                         </div>
                         <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
-                          {item.createTime}
+                          {item.createTime || item.createdAt}
                         </div>
                       </div>
                     }
@@ -281,10 +387,10 @@ const AdminDashboard = () => {
                     avatar={<Avatar icon={<GiftOutlined />} style={{ backgroundColor: '#fa8c16' }} />}
                     title={
                       <Space>
-                        <span>{item.userName}</span>
+                        <span>{item.userName || item.user?.name}</span>
                         <span>兑换</span>
-                        <span>{item.giftName}</span>
-                        <Tag color="orange">-{item.starsCost}⭐</Tag>
+                        <span>{item.giftName || item.gift?.name}</span>
+                        <Tag color="orange">-{item.starsCost || item.starCost}⭐</Tag>
                       </Space>
                     }
                     description={
@@ -293,7 +399,7 @@ const AdminDashboard = () => {
                           配送方式：{item.deliveryMethod === 'pickup' ? '现场领取' : '邮寄'}
                         </div>
                         <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
-                          {item.createTime}
+                          {item.createTime || item.createdAt}
                         </div>
                       </div>
                     }
@@ -304,6 +410,8 @@ const AdminDashboard = () => {
           </Card>
         </Col>
       </Row>
+        </>
+      )}
     </div>
   )
 }
