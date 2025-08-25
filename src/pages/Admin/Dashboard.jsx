@@ -324,7 +324,7 @@ const AdminDashboard = () => {
                     description={
                       <Space>
                         <StarOutlined style={{ color: '#fadb14' }} />
-                        <span>{item.receivedThisYear || item.totalReceived} ⭐</span>
+                        <span>{item.received_stars} ⭐</span>
                       </Space>
                     }
                   />
@@ -345,10 +345,10 @@ const AdminDashboard = () => {
                     avatar={<Avatar icon={<SendOutlined />} style={{ backgroundColor: '#52c41a' }} />}
                     title={
                       <Space>
-                        <span>{item.fromUserName || item.fromUser?.name}</span>
+                        <span>{item.from_user_name || item.fromUser?.name}</span>
                         <span>→</span>
-                        <span>{item.toUserName || item.toUser?.name}</span>
-                        <Tag color="green">+{item.stars || item.starCount}⭐</Tag>
+                        <span>{item.to_user_name || item.toUser?.name}</span>
+                        <Tag color="green">+{item.stars}⭐</Tag>
                       </Space>
                     }
                     description={
