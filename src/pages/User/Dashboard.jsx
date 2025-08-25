@@ -1,43 +1,217 @@
-import React from 'react'
-import { Row, Col, Card, Statistic, Progress, List, Avatar, Tag, Space } from 'antd'
+import React, { useState, useEffect } from 'react'
+import { Row, Col, Card, Statistic, Progress, List, Avatar, Tag, Space, Spin, message } from 'antd'
 import {
   StarOutlined,
   SendOutlined,
   GiftOutlined,
   TrophyOutlined,
-  RiseOutlined
+  RiseOutlined,
+  ReloadOutlined
 } from '@ant-design/icons'
 import { useAuth } from '../../contexts/AuthContext'
-import { mockGiveRecords } from '../../data/mockData'
+import { starsService } from '../../services/starsService'
+import { rankingsService } from '../../services/rankingsService'
+import { userService } from '../../services/userService'
 
 const Dashboard = () => {
-  const { user } = useAuth()
+  const { user, updateUser } = useAuth()
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [recentReceived, setRecentReceived] = useState([])
+  const [recentGiven, setRecentGiven] = useState([])
+  const [myRanking, setMyRanking] = useState(null)
+  const [error, setError] = useState(null)
+  const [currentUser, setCurrentUser] = useState(user)
 
-  // 获取最近的赠送记录（给自己的）
-  const recentReceived = mockGiveRecords
-    .filter(record => record.toUserId === user.id)
-    .sort((a, b) => new Date(b.createTime) - new Date(a.createTime))
-    .slice(0, 5)
+  // 获取最新的用户信息
+  const fetchUserProfile = async () => {
+    try {
+      const response = await userService.getProfile()
+      if (response.success) {
+        setCurrentUser(response.data)
+        // 更新AuthContext中的用户信息
+        updateUser(response.data)
+      }
+    } catch (error) {
+      console.error('获取用户信息失败:', error)
+      // 获取用户信息失败不影响主要功能
+    }
+  }
 
-  // 获取最近的赠送记录（自己给别人的）
-  const recentGiven = mockGiveRecords
-    .filter(record => record.fromUserId === user.id)
-    .sort((a, b) => new Date(b.createTime) - new Date(a.createTime))
-    .slice(0, 5)
+  // 获取最近的赠送记录
+  const fetchRecentRecords = async () => {
+    try {
+      setRefreshing(true)
+      setError(null)
+
+      // 并行获取收到的和赠送的记录
+      const [receivedRes, givenRes] = await Promise.all([
+        starsService.getGiveRecords({
+          type: 'received',
+          page: 1,
+          limit: 5
+        }),
+        starsService.getGiveRecords({
+          type: 'sent',
+          page: 1,
+          limit: 5
+        })
+      ])
+
+      if (receivedRes.success) {
+        setRecentReceived(receivedRes.data.records || receivedRes.data || [])
+      }
+
+      if (givenRes.success) {
+        setRecentGiven(givenRes.data.records || givenRes.data || [])
+      }
+
+    } catch (error) {
+      console.error('获取赠送记录失败:', error)
+      setError('获取赠送记录失败')
+      message.error('获取赠送记录失败，请稍后重试')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  // 获取我的排名信息
+  const fetchMyRanking = async () => {
+    try {
+      const response = await rankingsService.getMyRanking({
+        period: 'month' // 获取月度排名
+      })
+
+      if (response.success) {
+        setMyRanking(response.data)
+      }
+    } catch (error) {
+      console.error('获取排名信息失败:', error)
+      // 排名获取失败不影响主要功能，只记录错误
+    }
+  }
+
+  // 刷新所有数据
+  const refreshAllData = async () => {
+    setRefreshing(true)
+    try {
+      await Promise.all([
+        fetchUserProfile(),
+        fetchRecentRecords(),
+        fetchMyRanking()
+      ])
+      message.success('数据已刷新')
+    } catch (error) {
+      console.error('刷新数据失败:', error)
+      message.error('刷新数据失败，请稍后重试')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  // 组件加载时获取数据
+  useEffect(() => {
+    if (user?.id) {
+      const loadInitialData = async () => {
+        setLoading(true)
+        try {
+          await Promise.all([
+            fetchUserProfile(),
+            fetchRecentRecords(),
+            fetchMyRanking()
+          ])
+        } catch (error) {
+          console.error('加载初始数据失败:', error)
+        } finally {
+          setLoading(false)
+        }
+      }
+      loadInitialData()
+    }
+  }, [user?.id])
 
   // 计算进度百分比
-  const giveProgress = Math.round(((user.monthlyAllocation - user.availableToGive) / user.monthlyAllocation) * 100)
-  const redeemProgress = user.availableToRedeem > 0 ? Math.round((user.redeemedThisYear / (user.redeemedThisYear + user.availableToRedeem)) * 100) : 0
+  const giveProgress = Math.round(((currentUser.monthlyAllocation - currentUser.availableToGive) / currentUser.monthlyAllocation) * 100)
+  const redeemProgress = currentUser.availableToRedeem > 0 ? Math.round((currentUser.redeemedThisYear / (currentUser.redeemedThisYear + currentUser.availableToRedeem)) * 100) : 0
+
+  // 格式化时间
+  const formatTime = (timeStr) => {
+    if (!timeStr) return '未知时间'
+    
+    const date = new Date(timeStr)
+    const now = new Date()
+    const diff = now - date
+
+    if (diff < 60000) { // 1分钟内
+      return '刚刚'
+    } else if (diff < 3600000) { // 1小时内
+      return `${Math.floor(diff / 60000)}分钟前`
+    } else if (diff < 86400000) { // 1天内
+      return `${Math.floor(diff / 3600000)}小时前`
+    } else {
+      return date.toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    }
+  }
+
+  // 获取显示理由
+  const getDisplayReason = (item) => {
+    if (item.reason === '其他' && item.custom_reason) {
+      return item.custom_reason
+    }
+    return item.reason || '无理由'
+  }
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '50px 0' }}>
+        <Spin size="large" />
+        <div style={{ marginTop: 16, color: '#666' }}>加载中...</div>
+      </div>
+    )
+  }
 
   return (
     <div>
+      {/* 页面标题和刷新按钮 */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: 16 
+      }}>
+        <h2 style={{ margin: 0, color: '#1890ff' }}>个人中心</h2>
+        <button
+          onClick={refreshAllData}
+          disabled={refreshing}
+          style={{
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            color: '#1890ff',
+            fontSize: 14
+          }}
+        >
+          <ReloadOutlined spin={refreshing} />
+          {refreshing ? '刷新中...' : '刷新数据'}
+        </button>
+      </div>
+
       <Row gutter={[16, 16]}>
         {/* 个人赞赞星统计卡片 */}
         <Col xs={24} sm={12} lg={6}>
           <Card className="card-shadow">
             <Statistic
               title="本月可赠送"
-              value={user.availableToGive}
+              value={currentUser.availableToGive}
               prefix={<SendOutlined style={{ color: '#52c41a' }} />}
               suffix="⭐"
               valueStyle={{ color: '#52c41a' }}
@@ -49,7 +223,7 @@ const Dashboard = () => {
           <Card className="card-shadow">
             <Statistic
               title="累计获赠"
-              value={user.receivedThisYear}
+              value={currentUser.receivedThisYear}
               prefix={<StarOutlined style={{ color: '#1890ff' }} />}
               suffix="⭐"
               valueStyle={{ color: '#1890ff' }}
@@ -61,7 +235,7 @@ const Dashboard = () => {
           <Card className="card-shadow">
             <Statistic
               title="可兑换余额"
-              value={user.availableToRedeem}
+              value={currentUser.availableToRedeem}
               prefix={<GiftOutlined style={{ color: '#fa8c16' }} />}
               suffix="⭐"
               valueStyle={{ color: '#fa8c16' }}
@@ -73,7 +247,7 @@ const Dashboard = () => {
           <Card className="card-shadow">
             <Statistic
               title="当前排名"
-              value={user.ranking}
+              value={myRanking?.rank || currentUser.ranking || '--'}
               prefix={<TrophyOutlined style={{ color: '#eb2f96' }} />}
               suffix="位"
               valueStyle={{ color: '#eb2f96' }}
@@ -89,7 +263,7 @@ const Dashboard = () => {
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span>已赠送</span>
-                <span>{user.monthlyAllocation - user.availableToGive}/{user.monthlyAllocation} ⭐</span>
+                <span>{currentUser.monthlyAllocation - currentUser.availableToGive}/{currentUser.monthlyAllocation} ⭐</span>
               </div>
               <Progress 
                 percent={giveProgress} 
@@ -100,7 +274,7 @@ const Dashboard = () => {
               />
             </div>
             <div style={{ color: '#666', fontSize: 12 }}>
-              💡 本月剩余 {user.availableToGive} 颗赞赞星，月底未送出将自动清零
+              💡 本月剩余 {currentUser.availableToGive} 颗赞赞星，月底未送出将自动清零
             </div>
           </Card>
         </Col>
@@ -111,11 +285,11 @@ const Dashboard = () => {
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span>已兑换</span>
-                <span>{user.redeemedThisYear} ⭐</span>
+                <span>{currentUser.redeemedThisYear} ⭐</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span>可兑换</span>
-                <span>{user.availableToRedeem} ⭐</span>
+                <span>{currentUser.availableToRedeem} ⭐</span>
               </div>
               <Progress 
                 percent={redeemProgress} 
@@ -135,63 +309,89 @@ const Dashboard = () => {
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         {/* 最近收到的赞赞星 */}
         <Col xs={24} lg={12}>
-          <Card title="最近收到的赞赞星" className="card-shadow">
-            <List
-              dataSource={recentReceived}
-              locale={{ emptyText: '暂无收到的赞赞星记录' }}
-              renderItem={item => (
-                <List.Item>
-                  <List.Item.Meta
-                    avatar={<Avatar icon={<StarOutlined />} style={{ backgroundColor: '#1890ff' }} />}
-                    title={
-                      <Space>
-                        <span>{item.fromUserName}</span>
-                        <Tag color="blue">+{item.stars}⭐</Tag>
-                      </Space>
-                    }
-                    description={
-                      <div>
-                        <div>{item.reason === '其他' ? item.customReason : item.reason}</div>
-                        <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
-                          {item.createTime}
+          <Card 
+            title="最近收到的赞赞星" 
+            className="card-shadow"
+            extra={
+              <a onClick={() => fetchRecentRecords()}>刷新</a>
+            }
+          >
+                         <List
+               dataSource={recentReceived}
+               locale={{ emptyText: '暂无收到的赞赞星记录' }}
+               renderItem={item => (
+                 <List.Item>
+                   <List.Item.Meta
+                     avatar={<Avatar icon={<StarOutlined />} style={{ backgroundColor: '#1890ff' }} />}
+                                           title={
+                        <Space>
+                          <span>{item.from_user_name || '未知用户'}</span>
+                          <Tag color="blue">+{item.stars}⭐</Tag>
+                        </Space>
+                      }
+                      description={
+                        <div>
+                          <div style={{ marginBottom: 4 }}>
+                            <span style={{ color: '#666' }}>部门: </span>
+                            <span style={{ color: '#1890ff' }}>{item.from_user_department || '未知部门'}</span>
+                          </div>
+                          <div style={{ marginBottom: 4 }}>
+                            <span style={{ color: '#666' }}>理由: </span>
+                            {getDisplayReason(item)}
+                          </div>
+                          <div style={{ fontSize: 12, color: '#999' }}>
+                            {formatTime(item.created_at)}
+                          </div>
                         </div>
-                      </div>
-                    }
-                  />
-                </List.Item>
-              )}
-            />
+                      }
+                   />
+                 </List.Item>
+               )}
+             />
           </Card>
         </Col>
 
         {/* 最近赠送的赞赞星 */}
         <Col xs={24} lg={12}>
-          <Card title="最近赠送的赞赞星" className="card-shadow">
-            <List
-              dataSource={recentGiven}
-              locale={{ emptyText: '暂无赠送记录' }}
-              renderItem={item => (
-                <List.Item>
-                  <List.Item.Meta
-                    avatar={<Avatar icon={<SendOutlined />} style={{ backgroundColor: '#52c41a' }} />}
-                    title={
-                      <Space>
-                        <span>赠送给 {item.toUserName}</span>
-                        <Tag color="green">-{item.stars}⭐</Tag>
-                      </Space>
-                    }
-                    description={
-                      <div>
-                        <div>{item.reason === '其他' ? item.customReason : item.reason}</div>
-                        <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
-                          {item.createTime}
+          <Card 
+            title="最近赠送的赞赞星" 
+            className="card-shadow"
+            extra={
+              <a onClick={() => fetchRecentRecords()}>刷新</a>
+            }
+          >
+                         <List
+               dataSource={recentGiven}
+               locale={{ emptyText: '暂无赠送记录' }}
+               renderItem={item => (
+                 <List.Item>
+                   <List.Item.Meta
+                     avatar={<Avatar icon={<SendOutlined />} style={{ backgroundColor: '#52c41a' }} />}
+                                           title={
+                        <Space>
+                          <span>赠送给 {item.to_user_name || '未知用户'}</span>
+                          <Tag color="green">-{item.stars}⭐</Tag>
+                        </Space>
+                      }
+                      description={
+                        <div>
+                          <div style={{ marginBottom: 4 }}>
+                            <span style={{ color: '#666' }}>部门: </span>
+                            <span style={{ color: '#1890ff' }}>{item.to_user_department || '未知部门'}</span>
+                          </div>
+                          <div style={{ marginBottom: 4 }}>
+                            <span style={{ color: '#666' }}>理由: </span>
+                            {getDisplayReason(item)}
+                          </div>
+                          <div style={{ fontSize: 12, color: '#999' }}>
+                            {formatTime(item.created_at)}
+                          </div>
                         </div>
-                      </div>
-                    }
-                  />
-                </List.Item>
-              )}
-            />
+                      }
+                   />
+                 </List.Item>
+               )}
+             />
           </Card>
         </Col>
       </Row>
@@ -205,7 +405,7 @@ const Dashboard = () => {
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <RiseOutlined style={{ fontSize: 32, color: '#52c41a', marginBottom: 8 }} />
                   <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 4 }}>
-                    本月获赠 {user.receivedThisMonth} ⭐
+                    本月获赠 {currentUser.receivedThisMonth} ⭐
                   </div>
                   <div style={{ color: '#666' }}>
                     比上月增长 12%
@@ -216,10 +416,10 @@ const Dashboard = () => {
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <TrophyOutlined style={{ fontSize: 32, color: '#fa8c16', marginBottom: 8 }} />
                   <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 4 }}>
-                    排名第 {user.ranking} 位
+                    排名第 {myRanking?.rank || currentUser.ranking || '--'} 位
                   </div>
                   <div style={{ color: '#666' }}>
-                    {user.ranking <= 5 ? '表现优秀！' : '继续加油！'}
+                    {(myRanking?.rank || currentUser.ranking) <= 5 ? '表现优秀！' : '继续加油！'}
                   </div>
                 </div>
               </Col>

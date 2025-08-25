@@ -11,6 +11,7 @@ import './index.css'
 if (process.env.NODE_ENV === 'development') {
   import('./utils/apiTest')
   import('./utils/authDebug')
+  import('./utils/dashboardTest')
 }
 
 dayjs.locale('zh-cn')
