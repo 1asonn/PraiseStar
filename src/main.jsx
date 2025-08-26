@@ -12,6 +12,10 @@ if (process.env.NODE_ENV === 'development') {
   import('./utils/apiTest')
   import('./utils/authDebug')
   import('./utils/dashboardTest')
+  import('./utils/recordTest') // Added for Record page testing
+  import('./utils/giveTest') // Added for Give page testing
+  import('./utils/cascaderTest') // Added for Cascader component testing
+  import('./utils/layoutTest') // Added for Layout component testing
 }
 
 dayjs.locale('zh-cn')

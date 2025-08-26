@@ -43,12 +43,12 @@ const LoginPage = () => {
         }
         
         if (!loginForm.phone) {
-            message.warning('请输入手机号码')
+            message.warning('Please enter your phone number')
             return
         }
         
         if (!/^1[3-9]\d{9}$/.test(loginForm.phone)) {
-            message.warning('请输入正确的手机号码')
+            message.warning('Please enter a valid phone number')
             return
         }
 
@@ -61,11 +61,11 @@ const LoginPage = () => {
                 // 登录成功后，AuthContext会自动处理重定向
                 // 不需要手动调用navigate，避免双重重定向
             } else {
-                message.error(result.message || '登录失败')
+                message.error(result.message || 'Login failed')
             }
         } catch (error) {
-            console.error('登录错误:', error)
-            message.error('登录失败，请稍后重试')
+            console.error('Login error:', error)
+            message.error('Login failed, please try again later')
         } finally {
             setLoading(false)
             setIsSubmitting(false)
@@ -74,7 +74,7 @@ const LoginPage = () => {
 
     const handleRegister = (e) => {
         e.preventDefault()
-        message.info('注册功能暂未开放，请使用测试账号登录')
+        message.info('Registration is not available yet, please contact the administrator to register')
     }
 
     const ToRegisterForm = () => {
@@ -98,12 +98,12 @@ const LoginPage = () => {
 
                     {/* 登录表单 */}
                     <div className={styles.LoginFormBox}>
-                    <h1>⭐ 赞赞星登录</h1>
+                    <h1>⭐ ThumbStar Login</h1>
                     <form className={styles.form} onSubmit={handleLogin}>
                         <div className={styles.inputBox}>
                             <input 
                                 type="text" 
-                                placeholder="请输入手机号码" 
+                                placeholder="Phone Number" 
                                 value={loginForm.phone}
                                 onChange={(e) => setLoginForm({...loginForm, phone: e.target.value})}
                                 maxLength={11}
@@ -113,7 +113,7 @@ const LoginPage = () => {
                         <div className={styles.inputBox}>
                             <input 
                                 type="password" 
-                                placeholder="密码（演示版可留空）" 
+                                placeholder="Password" 
                                 value={loginForm.password}
                                 onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
                             />
@@ -124,7 +124,7 @@ const LoginPage = () => {
                             className={styles.btn}
                             disabled={loading || isSubmitting}
                         >
-                            {loading ? '登录中...' : '登录'}
+                            {loading ? 'Logging in...' : 'Login'}
                         </button>
                         
                         {/* 测试账号提示 */}
@@ -135,17 +135,14 @@ const LoginPage = () => {
                             textAlign: 'center',
                             lineHeight: '1.4'
                         }}>
-                            <div>测试账号：</div>
-                            <div>管理员：13800138001</div>
-                            <div>普通用户：13800138006</div>
                         </div>
                     </form>
                     </div>
 
                     {/* 注册表单 */}
                     <div className={styles.RegisterFormBox}>
-                        <h2>⭐ 注册账号</h2>
-                        <form className={styles.form} onSubmit={handleRegister}>
+                        <h2>⭐ Register Account</h2>
+                        {/* <form className={styles.form} onSubmit={handleRegister}>
                             <div className={styles.inputBox}>
                                 <input 
                                     type="text" 
@@ -175,22 +172,33 @@ const LoginPage = () => {
                                 注册功能暂未开放<br/>
                                 请使用测试账号体验系统
                             </div>
-                        </form>
+                        </form> */}
+                        {/* 注册功能暂未开放 */}
+                        <div style={{
+                            marginTop: '100px',
+                            fontSize: '18px',
+                            color: '#666',
+                            textAlign: 'center',
+                            fontWeight: 'bold'
+                        }}>
+                            Registration is not available yet
+                            Please contact the administrator to register
+                        </div>
                     </div> 
 
                     {/* 动画模组 （幕布动画）*/} 
                     <div className={styles.toggleBox}> 
                         {/* 登录 */}
                         <div className={`${styles.togglePanel} ${styles.left}`}>
-                            <h1>欢迎回来!</h1>
-                            <p>还没有账号？</p>
-                            <button className={`${styles.btn} ${styles.registerBtn}`} onClick={ToRegisterForm}>注册</button>
+                            <h1>Welcome Back!</h1>
+                            <p>No account yet?</p>
+                            <button className={`${styles.btn} ${styles.registerBtn}`} onClick={ToRegisterForm}>Register</button>
                         </div>
                         {/* 注册 */}
                         <div className={`${styles.togglePanel} ${styles.right}`}>
-                            <h1>你好，欢迎!</h1>
-                            <p>已有账号？</p>
-                            <button className={`${styles.btn} ${styles.loginBtn}`} onClick={ToLoginForm}>登录</button>
+                            <h1>Hello, Welcome!</h1>
+                            <p>Already have an account?</p>
+                            <button className={`${styles.btn} ${styles.loginBtn}`} onClick={ToLoginForm}>Login</button>
                         </div>
                     </div>
                 </div>

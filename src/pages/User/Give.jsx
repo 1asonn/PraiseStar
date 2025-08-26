@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Card,
   Form,
@@ -14,7 +14,9 @@ import {
   Modal,
   Avatar,
   Space,
-  Tag
+  Tag,
+  Spin,
+  Cascader
 } from 'antd'
 import {
   SendOutlined,
@@ -23,7 +25,8 @@ import {
   InfoCircleOutlined
 } from '@ant-design/icons'
 import { useAuth } from '../../contexts/AuthContext'
-import { mockUsers, giveReasons } from '../../data/mockData'
+import { giveReasons } from '../../data/mockData'
+import { starsService } from '../../services/starsService'
 
 const { Option } = Select
 const { TextArea } = Input
@@ -32,38 +35,99 @@ const Give = () => {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [selectedUser, setSelectedUser] = useState(null)
-  const { user } = useAuth()
+  const [availableUsers, setAvailableUsers] = useState([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
+  const { user, refreshUser } = useAuth()
 
-  // 获取可以赠送的用户列表（排除自己）
-  const availableUsers = mockUsers.filter(u => u.id !== user.id)
+  // 获取可用用户列表
+  const fetchAvailableUsers = async () => {
+    setLoadingUsers(true)
+    try {
+      const response = await starsService.getAvailableUsers()
+      if (response.success) {
+        setAvailableUsers(response.data.departments || [])
+      } else {
+        message.error('获取用户列表失败')
+      }
+    } catch (error) {
+      console.error('获取可用用户失败:', error)
+      message.error('获取用户列表失败，请稍后重试')
+    } finally {
+      setLoadingUsers(false)
+    }
+  }
 
-  const handleUserSelect = (userId) => {
-    const selected = availableUsers.find(u => u.id === userId)
-    setSelectedUser(selected)
+  // 组件加载时获取可用用户
+  useEffect(() => {
+    fetchAvailableUsers()
+  }, [])
+
+  // 将部门用户数据转换为Cascader需要的格式
+  const cascaderOptions = availableUsers.map(dept => ({
+    value: dept.department,
+    label: dept.department,
+    children: dept.users.map(user => ({
+      value: user.id,
+      label: (
+        <Space>
+          <span>{user.name}</span>
+          <Tag size="small" color="blue">{user.position}</Tag>
+        </Space>
+      ),
+      user: user // 保存完整的用户信息
+    }))
+  }))
+
+  const handleUserSelect = (value, selectedOptions) => {
+    if (selectedOptions && selectedOptions.length === 2) {
+      // 选择了用户（第二级）
+      const selectedUserData = selectedOptions[1].user
+      setSelectedUser(selectedUserData)
+    } else {
+      setSelectedUser(null)
+    }
   }
 
   const onFinish = async (values) => {
     setLoading(true)
     try {
-      // 模拟API调用
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Cascader的值是一个数组，第二个元素是用户ID
+      const toUserId = Array.isArray(values.toUserId) ? values.toUserId[1] : values.toUserId
       
-      Modal.success({
-        title: '赠送成功！',
-        content: (
-          <div>
-            <p>您成功向 <strong>{selectedUser.name}</strong> 赠送了 <strong>{values.stars}</strong> 颗赞赞星！</p>
-            <p>赠送理由：{values.reason === '其他' ? values.customReason : values.reason}</p>
-          </div>
-        ),
-        onOk: () => {
-          form.resetFields()
-          setSelectedUser(null)
-        }
-      })
+      const giveData = {
+        toUserId: toUserId,
+        stars: values.stars,
+        reason: values.reason,
+        customReason: values.reason === '其他' ? values.customReason : null
+      }
       
-      message.success('赞赞星赠送成功！')
+      const response = await starsService.giveStars(giveData)
+      
+      if (response.success) {
+        Modal.success({
+          title: '赠送成功！',
+          content: (
+            <div>
+              <p>您成功向 <strong>{selectedUser.name}</strong> 赠送了 <strong>{values.stars}</strong> 颗赞赞星！</p>
+              <p>赠送理由：{values.reason === '其他' ? values.customReason : values.reason}</p>
+            </div>
+          ),
+          onOk: async () => {
+            form.resetFields()
+            setSelectedUser(null)
+            // 刷新用户信息和可用用户列表
+            await fetchAvailableUsers()
+            // 刷新当前用户信息
+            await refreshUser()
+          }
+        })
+        
+        message.success('赞赞星赠送成功！')
+      } else {
+        message.error(response.message || '赠送失败，请稍后重试')
+      }
     } catch (error) {
+      console.error('赠送赞赞星失败:', error)
       message.error('赠送失败，请稍后重试')
     } finally {
       setLoading(false)
@@ -150,25 +214,39 @@ const Give = () => {
                 name="toUserId"
                 rules={[{ required: true, message: '请选择赠送对象' }]}
               >
-                <Select
-                  placeholder="请选择要赠送的同事"
+                <Cascader
+                  placeholder="请选择部门和同事"
                   size="large"
-                  showSearch
-                  filterOption={(input, option) =>
-                    option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                  }
+                  expandTrigger="hover"
+                  options={cascaderOptions}
                   onChange={handleUserSelect}
-                >
-                  {availableUsers.map(u => (
-                    <Option key={u.id} value={u.id}>
-                      <Space>
-                        <Avatar size="small" icon={<UserOutlined />} />
-                        <span>{u.name}</span>
-                        <Tag size="small">{u.department}</Tag>
-                      </Space>
-                    </Option>
-                  ))}
-                </Select>
+                  loading={loadingUsers}
+                  notFoundContent={loadingUsers ? <Spin size="small" /> : '暂无可用用户'}
+                  showSearch={{
+                    filter: (inputValue, path) => {
+                      return path.some(option => 
+                        option.label && 
+                        (typeof option.label === 'string' ? 
+                          option.label.toLowerCase().indexOf(inputValue.toLowerCase()) > -1 :
+                          option.user && option.user.name.toLowerCase().indexOf(inputValue.toLowerCase()) > -1
+                        )
+                      )
+                    }
+                  }}
+                  displayRender={(labels, selectedOptions) => {
+                    if (selectedOptions && selectedOptions.length === 2) {
+                      const user = selectedOptions[1].user
+                      return (
+                        <Space>
+                          <span>{labels[0]}</span>
+                          <span>/</span>
+                          <span>{user.name}</span>
+                        </Space>
+                      )
+                    }
+                    return labels.join(' / ')
+                  }}
+                />
               </Form.Item>
 
               <Form.Item
@@ -261,17 +339,29 @@ const Give = () => {
                     <Col span={12}>
                       <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: 18, fontWeight: 'bold', color: '#1890ff' }}>
-                          {selectedUser.receivedThisMonth}
+                          {selectedUser.monthlyAllocation}
                         </div>
-                        <div style={{ fontSize: 12, color: '#666' }}>本月获赠</div>
+                        <div style={{ fontSize: 12, color: '#666' }}>本月分配</div>
                       </div>
                     </Col>
                     <Col span={12}>
                       <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: 18, fontWeight: 'bold', color: '#52c41a' }}>
-                          {selectedUser.ranking}
+                          {selectedUser.availableToGive}
                         </div>
-                        <div style={{ fontSize: 12, color: '#666' }}>当前排名</div>
+                        <div style={{ fontSize: 12, color: '#666' }}>可赠送</div>
+                      </div>
+                    </Col>
+                  </Row>
+                  <Row gutter={[8, 8]} style={{ marginTop: 8 }}>
+                    <Col span={24}>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 14, fontWeight: 'bold', color: '#fa8c16' }}>
+                          已赠送: {selectedUser.givenThisMonth}⭐
+                        </div>
+                        <div style={{ fontSize: 12, color: '#666' }}>
+                          本月已使用 {selectedUser.givenThisMonth} / {selectedUser.monthlyAllocation} 颗
+                        </div>
                       </div>
                     </Col>
                   </Row>

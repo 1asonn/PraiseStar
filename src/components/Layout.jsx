@@ -20,7 +20,8 @@ import {
   SettingOutlined,
   MenuOutlined,
   LogoutOutlined,
-  MessageOutlined
+  MessageOutlined,
+  HistoryOutlined
 } from '@ant-design/icons'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -54,6 +55,11 @@ const Layout = ({ userType }) => {
       key: '/user/ranking',
       icon: <TrophyOutlined />,
       label: '排行榜'
+    },
+    {
+      key: '/user/record',
+      icon: <HistoryOutlined />,
+      label: '历史记录'
     }
   ]
 
@@ -125,7 +131,6 @@ const Layout = ({ userType }) => {
 
   const siderContent = (
     <Menu
-      theme="dark"
       mode="inline"
       selectedKeys={[location.pathname]}
       items={menuItems}
@@ -134,7 +139,7 @@ const Layout = ({ userType }) => {
   )
 
   return (
-    <AntLayout style={{ minHeight: '100vh' }}>
+    <AntLayout style={{ height: '100vh', overflow: 'hidden' }}>
       {/* 桌面端侧边栏 */}
       {!isMobile && (
         <Sider
@@ -144,6 +149,8 @@ const Layout = ({ userType }) => {
           breakpoint="lg"
           collapsedWidth="0"
           className="desktop-sider"
+          theme="light"
+          style={{ height: '100%', overflow: 'hidden' }}
         >
           <div style={{
             height: 32,
@@ -164,17 +171,18 @@ const Layout = ({ userType }) => {
 
       {/* 移动端抽屉菜单 */}
       <Drawer
-        title="⭐ 赞赞星"
+        title="⭐ ThumbStar"
         placement="left"
         onClose={() => setMobileMenuVisible(false)}
         open={mobileMenuVisible}
         width={isMobile ? Math.min(250, window.innerWidth * 0.8) : 250}
         className="mobile-drawer"
+        styles={{body:{padding:0}}}
       >
         {siderContent}
       </Drawer>
 
-      <AntLayout>
+      <AntLayout style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Header style={{
           background: '#fff',
           padding: isMobile ? '0 12px' : '0 16px',
@@ -182,7 +190,11 @@ const Layout = ({ userType }) => {
           alignItems: 'center',
           justifyContent: 'space-between',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          height: isMobile ? 56 : 64
+          height: isMobile ? 70 : 80,
+          position: 'sticky',
+          top: 0,
+          zIndex: 1000,
+          flexShrink: 0
         }}>
           {/* 移动端菜单按钮 */}
           {isMobile && (
@@ -198,18 +210,33 @@ const Layout = ({ userType }) => {
           <div style={{ 
             flex: 1, 
             paddingLeft: isMobile ? 8 : 0,
-            overflow: 'hidden'
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center'
           }}>
             <h2 style={{ 
               margin: 0, 
               color: '#1890ff',
               fontSize: isMobile ? 16 : 20,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis'
+              fontWeight: 'bold',
+              lineHeight: 1.2
             }}>
-              {userType === 'admin' ? '管理后台' : '赞赞星系统'}
+              {userType === 'admin' ? 'ThumbStar Admin' : 'ThumbStar'}
             </h2>
+            {userType !== 'admin' && (
+              <div style={{
+                fontSize: isMobile ? 10 : 12,
+                color: '#666',
+                marginTop: 2,
+                lineHeight: 1.2,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                Recognize & Shine Together • Rewards for Every Achievement
+              </div>
+            )}
           </div>
 
           {/* 用户信息 */}
@@ -250,8 +277,10 @@ const Layout = ({ userType }) => {
           padding: isMobile ? '12px' : '16px',
           background: '#fff',
           borderRadius: 8,
-          minHeight: `calc(100vh - ${isMobile ? 80 : 112}px)`,
-          overflow: 'auto'
+          flex: 1,
+          overflow: 'auto',
+          display: 'flex',
+          flexDirection: 'column'
         }}>
           <Outlet />
         </Content>

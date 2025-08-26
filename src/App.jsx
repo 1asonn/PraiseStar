@@ -6,6 +6,7 @@ import UserDashboard from './pages/User/Dashboard'
 import UserGive from './pages/User/Give'
 import UserRedeem from './pages/User/Redeem'
 import UserRanking from './pages/User/Ranking'
+import UserRecord from './pages/User/Record'
 import AdminDashboard from './pages/Admin/Dashboard'
 import AdminUsers from './pages/Admin/Users'
 import AdminStars from './pages/Admin/Stars'
@@ -52,6 +53,7 @@ function App() {
             <Route path="give" element={<UserGive />} />
             <Route path="redeem" element={<UserRedeem />} />
             <Route path="ranking" element={<UserRanking />} />
+            <Route path="record" element={<UserRecord />} />
           </Route>
           
           {/* 管理员路由 */}

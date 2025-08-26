@@ -110,6 +110,20 @@ export const starsService = {
   },
 
   /**
+   * 获取可用用户列表（按部门分组）
+   * @returns {Promise} 可用用户列表
+   */
+  getAvailableUsers: async () => {
+    try {
+      const response = await api.get('/stars/available-users')
+      return response
+    } catch (error) {
+      console.error('获取可用用户列表失败:', error)
+      throw error
+    }
+  },
+
+  /**
    * 获取用户赞赞星余额
    * @param {number} userId - 用户ID（可选，不传则获取当前用户）
    * @returns {Promise} 赞赞星余额信息
