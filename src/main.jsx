@@ -16,6 +16,7 @@ if (process.env.NODE_ENV === 'development') {
   import('./utils/giveTest') // Added for Give page testing
   import('./utils/cascaderTest') // Added for Cascader component testing
   import('./utils/layoutTest') // Added for Layout component testing
+  import('./utils/giftsTest') // Added for Gifts page testing
 }
 
 dayjs.locale('zh-cn')
