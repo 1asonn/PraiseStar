@@ -1,5 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const webpack = require('webpack');
 
 module.exports = {
   entry: './src/main.jsx',
@@ -78,6 +79,14 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: './index.html',
       inject: true
+    }),
+    new webpack.DefinePlugin({
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
+      'process.env.API_BASE_URL': JSON.stringify(
+        process.env.NODE_ENV === 'production' 
+          ? 'http://39.105.117.48:3000/api'
+          : 'http://localhost:3000/api'
+      )
     })
   ],
 

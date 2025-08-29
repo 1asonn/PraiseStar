@@ -1,7 +1,7 @@
 import axios from 'axios'
 
-// API基础配置
-const API_BASE_URL = 'http://localhost:3000/api'
+// API基础配置 - 使用webpack定义的环境变量
+const API_BASE_URL = 'http://http://39.105.117.48/:3000/api'
 
 // 创建axios实例
 const apiClient = axios.create({
