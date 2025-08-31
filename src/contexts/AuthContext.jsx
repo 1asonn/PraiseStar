@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
       const savedUser = authService.getCurrentUser()
 
       if (token && savedUser) {
-        // 先设置用户状态，避免页面刷新跳转到登录页
+        // 设置用户状态，避免页面刷新跳转到登录页
         setUser(savedUser)
         setIsAuthenticated(true)
         
@@ -43,7 +43,7 @@ export const AuthProvider = ({ children }) => {
           // Token有效，保持当前状态
         } catch (error) {
           // Token无效时才清除状态
-          console.warn('Token验证失败，但保持当前会话:', error.message)
+          console.warn('Token验证失败:', error.message)
           // 只在确实是认证错误时才清除
           if (error.status === 401 || error.status === 403) {
             console.warn('认证失败，清除本地存储')
@@ -68,14 +68,12 @@ export const AuthProvider = ({ children }) => {
       const response = await authService.login(phone, password)
       
       if (response.success) {
-        // 先更新状态，触发重定向
+        // 批量更新状态，减少重渲染次数
         setUser(response.data.user)
         setIsAuthenticated(true)
         
-        // 延迟显示成功消息，避免与重定向冲突
-        setTimeout(() => {
-          message.success('登录成功')
-        }, 100)
+        // 显示成功消息
+        message.success('登录成功')
         
         return { success: true, user: response.data.user }
       } else {

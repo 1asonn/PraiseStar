@@ -83,7 +83,7 @@ const Dashboard = () => {
       })
 
       if (response.success) {
-        setMyRanking(response.data)
+        setMyRanking(response.data.user)
       }
     } catch (error) {
       console.error('获取排名信息失败:', error)
@@ -247,7 +247,7 @@ const Dashboard = () => {
           <Card className="card-shadow">
             <Statistic
               title="当前排名"
-              value={myRanking?.rank || currentUser.ranking || '--'}
+              value={myRanking?.ranking || '--'}
               prefix={<TrophyOutlined style={{ color: '#eb2f96' }} />}
               suffix="位"
               valueStyle={{ color: '#eb2f96' }}

@@ -33,6 +33,8 @@ const LoginPage = () => {
     }
     
 
+    
+
 
     const handleLogin = async (e) => {
         e.preventDefault()
@@ -58,8 +60,8 @@ const LoginPage = () => {
         try {
             const result = await login(loginForm.phone, loginForm.password)
             if (result.success) {
-                // 登录成功后，AuthContext会自动处理重定向
-                // 不需要手动调用navigate，避免双重重定向
+                // 登录成功，AuthContext会自动处理重定向
+                // 不需要额外处理，避免页面闪烁
             } else {
                 message.error(result.message || 'Login failed')
             }

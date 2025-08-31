@@ -125,7 +125,7 @@ export const API_ENDPOINTS = {
     REDEMPTIONS: '/gifts/redemptions',
     ALL_REDEMPTIONS: '/gifts/redemptions/all',
     UPDATE_REDEMPTION_STATUS: (id) => `/gifts/redemptions/${id}/status`,
-    STATISTICS: '/gifts/statistics',
+    STATISTICS: '/gifts/stats',
     EXPORT: '/gifts/export'
   },
   
@@ -136,7 +136,7 @@ export const API_ENDPOINTS = {
     USER: (id) => `/rankings/user/${id}`,
     DEPARTMENTS: '/rankings/departments',
     STATISTICS: '/rankings/statistics',
-    MY_RANKING: '/rankings/my-ranking',
+    MY_RANKING: '/rankings/my',
     TREND: '/rankings/trend',
     EXPORT: '/rankings/export'
   },

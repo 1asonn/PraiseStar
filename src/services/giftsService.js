@@ -205,7 +205,7 @@ export const giftsService = {
    */
   getGiftStatistics: async (params = {}) => {
     try {
-      const response = await api.get('/gifts/statistics', params)
+      const response = await api.get('/gifts/stats', params)
       return response
     } catch (error) {
       console.error('获取礼品统计信息失败:', error)

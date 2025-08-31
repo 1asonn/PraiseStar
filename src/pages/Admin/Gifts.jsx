@@ -21,7 +21,8 @@ import {
   Spin,
   Alert,
   List,
-  Avatar
+  Avatar,
+  Radio
 } from 'antd'
 import {
   PlusOutlined,
@@ -41,23 +42,72 @@ import dayjs from 'dayjs'
 const { TextArea } = Input
 const { TabPane } = Tabs
 
+// 状态颜色映射
+const getStatusColor = (status) => {
+  switch (status) {
+    case 'processing':
+      return '#1890ff'
+    case 'shipping':
+      return '#52c41a'
+    case 'completed':
+      return '#722ed1'
+    case 'cancelled':
+      return '#ff4d4f'
+    default:
+      return '#d9d9d9'
+  }
+}
+
+// 状态文本映射
+const getStatusText = (status) => {
+  switch (status) {
+    case 'processing':
+      return '待处理'
+    case 'shipping':
+      return '配送中'
+    case 'completed':
+      return '已完成'
+    case 'cancelled':
+      return '已取消'
+    default:
+      return '未知状态'
+  }
+}
+
 const AdminGifts = () => {
   // 状态管理
   const [gifts, setGifts] = useState([])
   const [redemptions, setRedemptions] = useState([])
   const [loading, setLoading] = useState(false)
   const [redemptionsLoading, setRedemptionsLoading] = useState(false)
+  const [redemptionPagination, setRedemptionPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0
+  })
   const [modalVisible, setModalVisible] = useState(false)
   const [editingGift, setEditingGift] = useState(null)
+  const [redemptionDetailVisible, setRedemptionDetailVisible] = useState(false)
+  const [selectedRedemption, setSelectedRedemption] = useState(null)
+  const [processingModalVisible, setProcessingModalVisible] = useState(false)
+  const [processingForm] = Form.useForm()
   const [form] = Form.useForm()
   const [imageUrl, setImageUrl] = useState('')
   const [uploading, setUploading] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const [statistics, setStatistics] = useState({
-    totalGifts: 0,
-    activeGifts: 0,
-    lowStockGifts: 0,
-    totalRedemptions: 0
+    overview: {
+      totalGifts: 0,
+      activeGifts: 0,
+      lowStockGifts: 0,
+      totalRedemptions: 0,
+      currentMonthRedemptions: 0
+    },
+    details: {
+      lowStockDetails: [],
+      recentRedemptions: [],
+      redemptionStatusStats: []
+    }
   })
 
   // 获取礼品列表
@@ -70,15 +120,18 @@ const AdminGifts = () => {
         const giftsData = response.data || []
         setGifts(giftsData)
         
-        // 更新统计数据
+        // 更新统计数据（保留从API获取的统计数据，这里只更新基础数据）
         const totalGifts = giftsData.length || 0
         const activeGifts = giftsData.filter(g => g.is_active === 1)?.length || 0
         const lowStockGifts = giftsData.filter(g => g.stock <= 5)?.length || 0
         setStatistics(prev => ({
           ...prev,
-          totalGifts,
-          activeGifts,
-          lowStockGifts
+          overview: {
+            ...prev.overview,
+            totalGifts,
+            activeGifts,
+            lowStockGifts
+          }
         }))
       } else {
         message.error(response.message || '获取礼品列表失败')
@@ -92,15 +145,30 @@ const AdminGifts = () => {
   }
 
   // 获取兑换记录
-  const fetchRedemptions = async () => {
+  const fetchRedemptions = async (page = 1, pageSize = 10) => {
     setRedemptionsLoading(true)
     try {
-      const response = await giftsService.getAllRedemptions()
+      const response = await giftsService.getAllRedemptions({ page, limit: pageSize })
       if (response.success) {
-        setRedemptions(response.data.redemptions || [])
+        // 适配新的API返回结构
+        const redemptionsData = response.data || []
+        setRedemptions(redemptionsData)
+        
+        // 更新分页信息
+        if (response.pagination) {
+          setRedemptionPagination({
+            current: response.pagination.current || 1,
+            pageSize: response.pagination.limit || 10,
+            total: response.pagination.total || 0
+          })
+        }
+        
         setStatistics(prev => ({
           ...prev,
-          totalRedemptions: response.data.redemptions?.length || 0
+          overview: {
+            ...prev.overview,
+            totalRedemptions: response.pagination?.total || redemptionsData.length || 0
+          }
         }))
       } else {
         message.error(response.message || '获取兑换记录失败')
@@ -128,7 +196,7 @@ const AdminGifts = () => {
   // 初始化数据
   useEffect(() => {
     fetchGifts()
-    fetchRedemptions()
+    fetchRedemptions(1, 10)
     fetchStatistics()
   }, [])
 
@@ -283,6 +351,22 @@ const AdminGifts = () => {
     }
   }
 
+  // 查看兑换记录详情
+  const handleViewRedemptionDetail = (redemption) => {
+    setSelectedRedemption(redemption)
+    setRedemptionDetailVisible(true)
+  }
+
+  // 处理兑换记录
+  const handleProcessRedemption = (redemption) => {
+    setSelectedRedemption(redemption)
+    processingForm.setFieldsValue({
+      status: redemption.status,
+      adminNote: redemption.admin_note || ''
+    })
+    setProcessingModalVisible(true)
+  }
+
   // 更新兑换记录状态
   const handleUpdateRedemptionStatus = async (redemptionId, newStatus) => {
     try {
@@ -291,13 +375,37 @@ const AdminGifts = () => {
       })
       if (response.success) {
         message.success('状态更新成功')
-        fetchRedemptions() // 重新获取兑换记录
+        // 重新获取当前页的兑换记录
+        fetchRedemptions(redemptionPagination.current, redemptionPagination.pageSize)
       } else {
         message.error(response.message || '状态更新失败')
       }
     } catch (error) {
       console.error('更新兑换状态失败:', error)
       message.error('状态更新失败')
+    }
+  }
+
+  // 处理兑换记录表单提交
+  const handleProcessSubmit = async (values) => {
+    try {
+      const response = await giftsService.updateRedemptionStatus(selectedRedemption.id, {
+        status: values.status,
+        adminNote: values.adminNote
+      })
+      if (response.success) {
+        message.success('处理成功')
+        setProcessingModalVisible(false)
+        processingForm.resetFields()
+        setSelectedRedemption(null)
+        // 重新获取当前页的兑换记录
+        fetchRedemptions(redemptionPagination.current, redemptionPagination.pageSize)
+      } else {
+        message.error(response.message || '处理失败')
+      }
+    } catch (error) {
+      console.error('处理兑换记录失败:', error)
+      message.error('处理失败')
     }
   }
 
@@ -495,26 +603,47 @@ const AdminGifts = () => {
   const redemptionColumns = [
     {
       title: '兑换时间',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
+      dataIndex: 'created_at',
+      key: 'created_at',
       width: 150,
       render: (time) => dayjs(time).format('YYYY-MM-DD HH:mm')
     },
     {
       title: '员工姓名',
-      dataIndex: 'userName',
+      dataIndex: ['user', 'name'],
       key: 'userName',
-      width: 100
+      width: 100,
+      render: (_, record) => (
+        <div>
+          <div style={{ fontWeight: 'bold' }}>{record.user?.name}</div>
+          <div style={{ fontSize: 12, color: '#666' }}>{record.user?.department}</div>
+        </div>
+      )
     },
     {
       title: '礼品名称',
-      dataIndex: 'giftName',
+      dataIndex: ['gift', 'name'],
       key: 'giftName',
-      width: 150
+      width: 150,
+      render: (_, record) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {record.gift?.image && (
+            <Image
+              width={30}
+              height={30}
+              src={record.gift.image}
+              alt={record.gift.name}
+              style={{ objectFit: 'cover', borderRadius: 4 }}
+              fallback="/images/gift-placeholder.jpg"
+            />
+          )}
+          <span>{record.gift?.name}</span>
+        </div>
+      )
     },
     {
       title: '消耗星数',
-      dataIndex: 'starsCost',
+      dataIndex: 'stars_cost',
       key: 'starsCost',
       width: 100,
       align: 'center',
@@ -524,7 +653,7 @@ const AdminGifts = () => {
     },
     {
       title: '领取方式',
-      dataIndex: 'deliveryMethod',
+      dataIndex: 'delivery_method',
       key: 'deliveryMethod',
       width: 100,
       render: (method) => (
@@ -539,14 +668,31 @@ const AdminGifts = () => {
       width: 200,
       render: (_, record) => (
         <div>
-          {record.deliveryMethod === 'mail' ? (
+          {record.delivery_method === 'mail' ? (
             <>
-              <div style={{ fontSize: 12 }}>{record.recipientName}</div>
-              <div style={{ fontSize: 12, color: '#666' }}>{record.recipientPhone}</div>
+              <div style={{ fontSize: 12 }}>{record.recipient_name}</div>
+              <div style={{ fontSize: 12, color: '#666' }}>{record.recipient_phone}</div>
               <div style={{ fontSize: 12, color: '#666' }}>{record.address}</div>
             </>
           ) : (
-            <span style={{ color: '#999' }}>-</span>
+            <div style={{ fontSize: 12, color: '#666' }}>
+              收件人：{record.recipient_name}
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      title: '管理员备注',
+      dataIndex: 'admin_note',
+      key: 'adminNote',
+      width: 150,
+      render: (note, record) => (
+        <div>
+          {note ? (
+            <div style={{ fontSize: 12, color: '#666' }}>{note}</div>
+          ) : (
+            <span style={{ color: '#999', fontSize: 12 }}>无备注</span>
           )}
         </div>
       )
@@ -556,24 +702,34 @@ const AdminGifts = () => {
       dataIndex: 'status',
       key: 'status',
       width: 100,
-      render: (status, record) => (
-        <Popconfirm
-          title="更新状态"
-          onConfirm={() => {
-            const newStatus = status === '待处理' ? '配送中' : 
-                            status === '配送中' ? '已完成' : '待处理'
-            handleUpdateRedemptionStatus(record.id, newStatus)
-          }}
-          okText="确定"
-          cancelText="取消"
-        >
-          <Tag 
-            color={status === '已完成' ? 'green' : status === '配送中' ? 'blue' : 'orange'}
-            style={{ cursor: 'pointer' }}
-          >
-            {status}
-          </Tag>
-        </Popconfirm>
+      render: (status) => (
+        <Tag color={getStatusColor(status)}>
+          {getStatusText(status)}
+        </Tag>
+      )
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 120,
+      fixed: 'right',
+      render: (_, record) => (
+        <Space size="small">
+          <Button
+            type="text"
+            icon={<EyeOutlined />}
+            onClick={() => handleViewRedemptionDetail(record)}
+            size="small"
+            title="查看详情"
+          />
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            onClick={() => handleProcessRedemption(record)}
+            size="small"
+            title="处理"
+          />
+        </Space>
       )
     }
   ]
@@ -586,7 +742,7 @@ const AdminGifts = () => {
           <Card className="card-shadow">
             <Statistic
               title="礼品总数"
-              value={statistics.totalGifts}
+              value={statistics.overview?.totalGifts || 0}
               prefix={<GiftOutlined style={{ color: '#1890ff' }} />}
               valueStyle={{ color: '#1890ff' }}
             />
@@ -596,7 +752,7 @@ const AdminGifts = () => {
           <Card className="card-shadow">
             <Statistic
               title="上架礼品"
-              value={statistics.activeGifts}
+              value={statistics.overview?.activeGifts || 0}
               prefix={<GiftOutlined style={{ color: '#52c41a' }} />}
               valueStyle={{ color: '#52c41a' }}
             />
@@ -606,7 +762,7 @@ const AdminGifts = () => {
           <Card className="card-shadow">
             <Statistic
               title="库存不足"
-              value={statistics.lowStockGifts}
+              value={statistics.overview?.lowStockGifts || 0}
               prefix={<GiftOutlined style={{ color: '#fa8c16' }} />}
               valueStyle={{ color: '#fa8c16' }}
             />
@@ -616,9 +772,34 @@ const AdminGifts = () => {
           <Card className="card-shadow">
             <Statistic
               title="总兑换次数"
-              value={statistics.totalRedemptions}
+              value={statistics.overview?.totalRedemptions || 0}
               prefix={<ShoppingCartOutlined style={{ color: '#eb2f96' }} />}
               valueStyle={{ color: '#eb2f96' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* 本月兑换统计 */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12}>
+          <Card className="card-shadow">
+            <Statistic
+              title="本月兑换次数"
+              value={statistics.overview?.currentMonthRedemptions || 0}
+              prefix={<ShoppingCartOutlined style={{ color: '#722ed1' }} />}
+              valueStyle={{ color: '#722ed1' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12}>
+          <Card className="card-shadow">
+            <Statistic
+              title="兑换状态分布"
+              value={statistics.details?.redemptionStatusStats?.length || 0}
+              prefix={<GiftOutlined style={{ color: '#13c2c2' }} />}
+              suffix="种状态"
+              valueStyle={{ color: '#13c2c2' }}
             />
           </Card>
         </Col>
@@ -686,6 +867,153 @@ const AdminGifts = () => {
           </Card>
         </TabPane>
 
+        <TabPane tab="统计详情" key="statistics">
+          <Row gutter={[16, 16]}>
+            {/* 最近兑换记录 */}
+            <Col xs={24} lg={12}>
+              <Card 
+                title="最近兑换记录" 
+                className="card-shadow"
+                extra={
+                  <Button 
+                    icon={<ReloadOutlined />} 
+                    onClick={fetchStatistics}
+                    size="small"
+                  >
+                    刷新
+                  </Button>
+                }
+              >
+                {statistics.details?.recentRedemptions?.length > 0 ? (
+                  <List
+                    size="small"
+                    dataSource={statistics.details.recentRedemptions}
+                    renderItem={(item) => (
+                      <List.Item>
+                        <List.Item.Meta
+                          avatar={
+                            <Avatar 
+                              style={{ backgroundColor: '#1890ff' }}
+                              icon={<GiftOutlined />}
+                            />
+                          }
+                          title={
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span>{item.gift?.name}</span>
+                              <Tag color="red">-{item.stars_cost} ⭐</Tag>
+                            </div>
+                          }
+                          description={
+                            <div>
+                              <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
+                                {item.user?.name} ({item.user?.department})
+                              </div>
+                              <div style={{ fontSize: 11, color: '#999' }}>
+                                {new Date(item.created_at).toLocaleString('zh-CN')}
+                              </div>
+                            </div>
+                          }
+                        />
+                      </List.Item>
+                    )}
+                  />
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
+                    暂无最近兑换记录
+                  </div>
+                )}
+              </Card>
+            </Col>
+
+            {/* 兑换状态分布 */}
+            <Col xs={24} lg={12}>
+              <Card 
+                title="兑换状态分布" 
+                className="card-shadow"
+              >
+                {statistics.details?.redemptionStatusStats?.length > 0 ? (
+                  <div>
+                    {statistics.details.redemptionStatusStats.map((status, index) => (
+                      <div 
+                        key={index}
+                        style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center',
+                          padding: '8px 0',
+                          borderBottom: index < statistics.details.redemptionStatusStats.length - 1 ? '1px solid #f0f0f0' : 'none'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <div 
+                            style={{
+                              width: 12,
+                              height: 12,
+                              borderRadius: '50%',
+                              backgroundColor: getStatusColor(status.status),
+                              marginRight: 8
+                            }}
+                          />
+                          <span>{getStatusText(status.status)}</span>
+                        </div>
+                        <Tag color={getStatusColor(status.status)}>
+                          {status.count} 条
+                        </Tag>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
+                    暂无状态数据
+                  </div>
+                )}
+              </Card>
+            </Col>
+
+            {/* 库存预警 */}
+            <Col xs={24}>
+              <Card 
+                title="库存预警" 
+                className="card-shadow"
+              >
+                {statistics.details?.lowStockDetails?.length > 0 ? (
+                  <List
+                    size="small"
+                    dataSource={statistics.details.lowStockDetails}
+                    renderItem={(item) => (
+                      <List.Item>
+                        <List.Item.Meta
+                          avatar={
+                            <Avatar 
+                              style={{ backgroundColor: '#fa8c16' }}
+                              icon={<GiftOutlined />}
+                            />
+                          }
+                          title={
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span>{item.name}</span>
+                              <Tag color="orange">库存: {item.stock}</Tag>
+                            </div>
+                          }
+                          description={
+                            <div style={{ fontSize: 12, color: '#666' }}>
+                              当前库存不足，建议及时补充
+                            </div>
+                          }
+                        />
+                      </List.Item>
+                    )}
+                  />
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
+                    暂无库存预警
+                  </div>
+                )}
+              </Card>
+            </Col>
+          </Row>
+        </TabPane>
+
         <TabPane tab="兑换记录" key="redemptions">
           <Card
             title="兑换记录"
@@ -694,7 +1022,7 @@ const AdminGifts = () => {
               <Space>
                 <Button
                   icon={<ReloadOutlined />}
-                  onClick={fetchRedemptions}
+                  onClick={() => fetchRedemptions(redemptionPagination.current, redemptionPagination.pageSize)}
                   loading={redemptionsLoading}
                 >
                   刷新
@@ -714,14 +1042,21 @@ const AdminGifts = () => {
                 dataSource={redemptions}
                 rowKey="id"
                 pagination={{
-                  total: redemptions.length,
-                  pageSize: 10,
+                  current: redemptionPagination.current,
+                  pageSize: redemptionPagination.pageSize,
+                  total: redemptionPagination.total,
                   showSizeChanger: true,
                   showQuickJumper: true,
-                  showTotal: (total) => `共 ${total} 条记录`
+                  showTotal: (total) => `共 ${total} 条记录`,
+                  onChange: (page, pageSize) => {
+                    fetchRedemptions(page, pageSize)
+                  },
+                  onShowSizeChange: (current, size) => {
+                    fetchRedemptions(1, size)
+                  }
                 }}
                 size="small"
-                scroll={{ x: 800 }}
+                scroll={{ x: 1200 }}
               />
             </Spin>
           </Card>
@@ -856,9 +1191,180 @@ const AdminGifts = () => {
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+             </Modal>
 
-      <style jsx>{`
+       {/* 兑换记录详情弹窗 */}
+       <Modal
+         title="兑换记录详情"
+         open={redemptionDetailVisible}
+         onCancel={() => {
+           setRedemptionDetailVisible(false)
+           setSelectedRedemption(null)
+         }}
+         footer={[
+           <Button key="close" onClick={() => setRedemptionDetailVisible(false)}>
+             关闭
+           </Button>
+         ]}
+         width={600}
+       >
+         {selectedRedemption && (
+           <div>
+             <Row gutter={[16, 16]}>
+               <Col span={12}>
+                 <div style={{ marginBottom: 16 }}>
+                   <div style={{ fontWeight: 'bold', marginBottom: 4 }}>兑换时间</div>
+                   <div>{dayjs(selectedRedemption.created_at).format('YYYY-MM-DD HH:mm:ss')}</div>
+                 </div>
+               </Col>
+               <Col span={12}>
+                 <div style={{ marginBottom: 16 }}>
+                   <div style={{ fontWeight: 'bold', marginBottom: 4 }}>状态</div>
+                   <Tag color={getStatusColor(selectedRedemption.status)}>
+                     {getStatusText(selectedRedemption.status)}
+                   </Tag>
+                 </div>
+               </Col>
+             </Row>
+
+             <Row gutter={[16, 16]}>
+               <Col span={12}>
+                 <div style={{ marginBottom: 16 }}>
+                   <div style={{ fontWeight: 'bold', marginBottom: 4 }}>员工姓名</div>
+                   <div>{selectedRedemption.user?.name}</div>
+                 </div>
+               </Col>
+               <Col span={12}>
+                 <div style={{ marginBottom: 16 }}>
+                   <div style={{ fontWeight: 'bold', marginBottom: 4 }}>部门</div>
+                   <div>{selectedRedemption.user?.department}</div>
+                 </div>
+               </Col>
+             </Row>
+
+             <Row gutter={[16, 16]}>
+               <Col span={12}>
+                 <div style={{ marginBottom: 16 }}>
+                   <div style={{ fontWeight: 'bold', marginBottom: 4 }}>礼品名称</div>
+                   <div>{selectedRedemption.gift?.name}</div>
+                 </div>
+               </Col>
+               <Col span={12}>
+                 <div style={{ marginBottom: 16 }}>
+                   <div style={{ fontWeight: 'bold', marginBottom: 4 }}>消耗星数</div>
+                   <div><Tag color="red">-{selectedRedemption.stars_cost} ⭐</Tag></div>
+                 </div>
+               </Col>
+             </Row>
+
+             <Row gutter={[16, 16]}>
+               <Col span={12}>
+                 <div style={{ marginBottom: 16 }}>
+                   <div style={{ fontWeight: 'bold', marginBottom: 4 }}>领取方式</div>
+                   <Tag color={selectedRedemption.delivery_method === 'pickup' ? 'green' : 'blue'}>
+                     {selectedRedemption.delivery_method === 'pickup' ? '现场领取' : '邮寄'}
+                   </Tag>
+                 </div>
+               </Col>
+               <Col span={12}>
+                 <div style={{ marginBottom: 16 }}>
+                   <div style={{ fontWeight: 'bold', marginBottom: 4 }}>收件人</div>
+                   <div>{selectedRedemption.recipient_name}</div>
+                 </div>
+               </Col>
+             </Row>
+
+             {selectedRedemption.delivery_method === 'mail' && (
+               <>
+                 <Row gutter={[16, 16]}>
+                   <Col span={12}>
+                     <div style={{ marginBottom: 16 }}>
+                       <div style={{ fontWeight: 'bold', marginBottom: 4 }}>联系电话</div>
+                       <div>{selectedRedemption.recipient_phone}</div>
+                     </div>
+                   </Col>
+                   <Col span={12}>
+                     <div style={{ marginBottom: 16 }}>
+                       <div style={{ fontWeight: 'bold', marginBottom: 4 }}>收件地址</div>
+                       <div>{selectedRedemption.address}</div>
+                     </div>
+                   </Col>
+                 </Row>
+               </>
+             )}
+
+             <div style={{ marginBottom: 16 }}>
+               <div style={{ fontWeight: 'bold', marginBottom: 4 }}>管理员备注</div>
+               <div style={{ 
+                 padding: 12, 
+                 background: '#f5f5f5', 
+                 borderRadius: 4,
+                 minHeight: 60
+               }}>
+                 {selectedRedemption.admin_note || '暂无备注'}
+               </div>
+             </div>
+           </div>
+         )}
+       </Modal>
+
+       {/* 处理兑换记录弹窗 */}
+       <Modal
+         title="处理兑换记录"
+         open={processingModalVisible}
+         onCancel={() => {
+           setProcessingModalVisible(false)
+           processingForm.resetFields()
+           setSelectedRedemption(null)
+         }}
+         footer={null}
+         width={500}
+       >
+         <Form
+           form={processingForm}
+           layout="vertical"
+           onFinish={handleProcessSubmit}
+         >
+           <Form.Item
+             label="状态"
+             name="status"
+             rules={[{ required: true, message: '请选择状态' }]}
+           >
+             <Radio.Group>
+               <Radio value="processing">待处理</Radio>
+               <Radio value="shipping">配送中</Radio>
+               <Radio value="completed">已完成</Radio>
+               <Radio value="cancelled">已取消</Radio>
+             </Radio.Group>
+           </Form.Item>
+
+           <Form.Item
+             label="管理员备注"
+             name="adminNote"
+             rules={[{ max: 500, message: '备注不能超过500个字符' }]}
+           >
+             <TextArea
+               rows={4}
+               placeholder="请输入处理备注..."
+               maxLength={500}
+               showCount
+             />
+           </Form.Item>
+
+           <Form.Item>
+             <Space>
+               <Button onClick={() => setProcessingModalVisible(false)}>
+                 取消
+               </Button>
+               <Button type="primary" htmlType="submit">
+                 确认处理
+               </Button>
+             </Space>
+           </Form.Item>
+         </Form>
+       </Modal>
+
+       <style jsx>{`
         :global(.gift-uploader .ant-upload) {
           width: 100px !important;
           height: 100px !important;

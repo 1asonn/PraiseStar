@@ -13,7 +13,8 @@ import {
   message,
   Statistic,
   Empty,
-  Image
+  Image,
+  Spin
 } from 'antd'
 import {
   GiftOutlined,
@@ -21,10 +22,12 @@ import {
   StarOutlined,
   EnvironmentOutlined,
   PhoneOutlined,
-  UserOutlined
+  UserOutlined,
+  ReloadOutlined
 } from '@ant-design/icons'
 import { useAuth } from '../../contexts/AuthContext'
-import { mockGifts } from '../../data/mockData'
+import { giftsService } from '../../services/giftsService'
+import { userService } from '../../services/userService'
 
 const { TextArea } = Input
 
@@ -33,13 +36,36 @@ const Redeem = () => {
   const [selectedGift, setSelectedGift] = useState(null)
   const [modalVisible, setModalVisible] = useState(false)
   const [loading, setLoading] = useState(false)
-  const { user } = useAuth()
+  const [giftsLoading, setGiftsLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [availableGifts, setAvailableGifts] = useState([])
+  const { user, refreshUser } = useAuth()
 
-  // 过滤可用的礼品
-  const availableGifts = mockGifts.filter(gift => gift.isActive && gift.stock > 0)
+  // 获取可兑换礼品
+  const fetchAvailableGifts = async () => {
+    setGiftsLoading(true)
+    try {
+      const response = await giftsService.getAvailableGifts()
+      if (response.success) {
+        setAvailableGifts(response.data || [])
+      } else {
+        message.error(response.message || '获取礼品列表失败')
+      }
+    } catch (error) {
+      console.error('获取礼品列表失败:', error)
+      message.error('获取礼品列表失败')
+    } finally {
+      setGiftsLoading(false)
+    }
+  }
+
+  // 初始化加载礼品
+  React.useEffect(() => {
+    fetchAvailableGifts()
+  }, [])
 
   const handleRedeem = (gift) => {
-    if (gift.starsCost > user.availableToRedeem) {
+    if (gift.stars_cost > user.availableToRedeem) {
       message.warning('您的赞赞星余额不足，无法兑换此礼品')
       return
     }
@@ -50,14 +76,42 @@ const Redeem = () => {
   const onFinish = async (values) => {
     setLoading(true)
     try {
-      // 模拟API调用
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      const deliveryInfo = {
+        deliveryMethod: values.deliveryMethod,
+        recipientName: values.recipientName,
+        recipientPhone: values.recipientPhone,
+        address: values.address
+      }
       
-      message.success('兑换成功！礼品将按您选择的方式进行配送')
-      setModalVisible(false)
-      redeemForm.resetFields()
-      setSelectedGift(null)
+      const response = await giftsService.redeemGift(selectedGift.id, deliveryInfo)
+      
+      if (response.success) {
+        message.success('兑换成功！礼品将按您选择的方式进行配送')
+        setModalVisible(false)
+        redeemForm.resetFields()
+        setSelectedGift(null)
+        
+        // 刷新所有相关数据
+        setRefreshing(true)
+        try {
+          // 并行刷新用户信息和礼品列表，提高响应速度
+          await Promise.all([
+            refreshUser(), // 刷新用户信息（包括余额和统计数据）
+            fetchAvailableGifts() // 重新获取礼品列表，更新库存
+          ])
+        } catch (error) {
+          console.error('刷新数据失败:', error)
+          // 即使刷新失败，也不影响兑换成功的提示
+          // 可以给用户一个提示，建议手动刷新
+          message.info('兑换成功，但数据刷新失败，建议手动刷新页面')
+        } finally {
+          setRefreshing(false)
+        }
+      } else {
+        message.error(response.message || '兑换失败，请稍后重试')
+      }
     } catch (error) {
+      console.error('兑换失败:', error)
       message.error('兑换失败，请稍后重试')
     } finally {
       setLoading(false)
@@ -82,6 +136,7 @@ const Redeem = () => {
               prefix={<StarOutlined style={{ color: '#1890ff' }} />}
               suffix="⭐"
               valueStyle={{ color: '#1890ff' }}
+              loading={refreshing}
             />
           </Card>
         </Col>
@@ -93,6 +148,7 @@ const Redeem = () => {
               prefix={<GiftOutlined style={{ color: '#52c41a' }} />}
               suffix="⭐"
               valueStyle={{ color: '#52c41a' }}
+              loading={refreshing}
             />
           </Card>
         </Col>
@@ -104,14 +160,40 @@ const Redeem = () => {
               prefix={<StarOutlined style={{ color: '#fa8c16' }} />}
               suffix="⭐"
               valueStyle={{ color: '#fa8c16' }}
+              loading={refreshing}
             />
           </Card>
         </Col>
       </Row>
 
       {/* 礼品库 */}
-      <Card title="礼品库" className="card-shadow">
-        {availableGifts.length > 0 ? (
+      <Card 
+        title="礼品库" 
+        className="card-shadow"
+        extra={
+          <Button 
+            icon={<ReloadOutlined />} 
+            onClick={fetchAvailableGifts}
+            loading={giftsLoading}
+            size="small"
+          >
+            刷新
+          </Button>
+        }
+      >
+        {giftsLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <Spin size="large" />
+            <div style={{ marginTop: 16, color: '#666' }}>加载中...</div>
+          </div>
+        ) : (refreshing || giftsLoading) ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <Spin size="large" />
+            <div style={{ marginTop: 16, color: '#666' }}>
+              {refreshing ? '正在更新数据...' : '加载中...'}
+            </div>
+          </div>
+        ) : availableGifts.length > 0 ? (
           <Row gutter={[16, 16]}>
             {availableGifts.map(gift => (
               <Col xs={24} sm={12} md={8} lg={6} key={gift.id}>
@@ -151,10 +233,10 @@ const Redeem = () => {
                       type="primary"
                       icon={<ShoppingCartOutlined />}
                       onClick={() => handleRedeem(gift)}
-                      disabled={gift.starsCost > user.availableToRedeem}
+                      disabled={gift.stars_cost > user.availableToRedeem}
                       size="small"
                     >
-                      {gift.starsCost > user.availableToRedeem ? '余额不足' : '立即兑换'}
+                      {gift.stars_cost > user.availableToRedeem ? '余额不足' : '立即兑换'}
                     </Button>
                   ]}
                 >
@@ -180,7 +262,7 @@ const Redeem = () => {
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Tag color="orange" style={{ margin: 0 }}>
-                            {gift.starsCost} ⭐
+                            {gift.stars_cost} ⭐
                           </Tag>
                           <span style={{ fontSize: 12, color: '#999' }}>
                             库存 {gift.stock}
@@ -222,7 +304,7 @@ const Redeem = () => {
               />
               <h3 style={{ margin: '12px 0 4px' }}>{selectedGift.name}</h3>
               <Tag color="orange" style={{ fontSize: 14 }}>
-                需要 {selectedGift.starsCost} ⭐
+                需要 {selectedGift.stars_cost} ⭐
               </Tag>
             </div>
 
@@ -319,8 +401,8 @@ const Redeem = () => {
                 <h4 style={{ margin: '0 0 8px', color: '#389e0d' }}>兑换确认</h4>
                 <div style={{ fontSize: 12, color: '#666' }}>
                   <div>礼品名称：{selectedGift.name}</div>
-                  <div>消耗赞赞星：{selectedGift.starsCost} ⭐</div>
-                  <div>兑换后余额：{user.availableToRedeem - selectedGift.starsCost} ⭐</div>
+                  <div>消耗赞赞星：{selectedGift.stars_cost} ⭐</div>
+                  <div>兑换后余额：{user.availableToRedeem - selectedGift.stars_cost} ⭐</div>
                 </div>
               </div>
 

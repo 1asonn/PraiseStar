@@ -95,7 +95,7 @@ export const rankingsService = {
    */
   getMyRanking: async (params = {}) => {
     try {
-      const response = await api.get('/rankings/my-ranking', params)
+      const response = await api.get('/rankings/my', params)
       return response
     } catch (error) {
       console.error('获取我的排名信息失败:', error)

@@ -1,7 +1,9 @@
 import axios from 'axios'
+import { API_CONFIG } from './config'
 
 // API基础配置 - 使用webpack定义的环境变量
-const API_BASE_URL = 'http://http://39.105.117.48/:3000/api'
+// const API_BASE_URL = 'http://39.105.117.48:3000/api'
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 // 创建axios实例
 const apiClient = axios.create({
@@ -40,10 +42,11 @@ apiClient.interceptors.response.use(
       // 处理特定HTTP状态码
       switch (status) {
         case 401:
-          // Token过期或无效，清除本地存储并跳转到登录页
+          // Token过期或无效，清除本地存储
           localStorage.removeItem('token')
           localStorage.removeItem('user')
-          window.location.href = '/login'
+          // 不直接跳转，让React Router处理路由
+          console.warn('Token已过期，请重新登录')
           break
         case 403:
           console.error('权限不足:', data.message)
