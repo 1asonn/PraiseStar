@@ -101,10 +101,9 @@ export const starApi = {
   },
 
   // 获取赠送记录
-  getGiveRecords: async (userId = null) => {
+  getGiveRecords: async () => {
     try {
-      const params = userId ? { type: 'all' } : {}
-      const response = await starsService.getGiveRecords(params)
+      const response = await starsService.getAllGiveRecords()
       return response
     } catch (error) {
       return { success: false, message: error.message || '获取赠送记录失败' }

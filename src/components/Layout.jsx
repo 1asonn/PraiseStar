@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import {
   Layout as AntLayout,
@@ -21,7 +21,8 @@ import {
   MenuOutlined,
   LogoutOutlined,
   MessageOutlined,
-  HistoryOutlined
+  HistoryOutlined,
+  SwapOutlined
 } from '@ant-design/icons'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -30,6 +31,7 @@ const { Header, Sider, Content } = AntLayout
 const Layout = ({ userType }) => {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileMenuVisible, setMobileMenuVisible] = useState(false)
+  const [currentView, setCurrentView] = useState(userType) // 当前视图状态
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuth()
@@ -92,10 +94,25 @@ const Layout = ({ userType }) => {
     }
   ]
 
-  const menuItems = userType === 'admin' ? adminMenuItems : userMenuItems
+  const menuItems = currentView === 'admin' ? adminMenuItems : userMenuItems
 
   const handleMenuClick = ({ key }) => {
     navigate(key)
+    setMobileMenuVisible(false)
+  }
+
+  // 切换视图（管理员/用户界面）
+  const handleViewToggle = () => {
+    const newView = currentView === 'admin' ? 'user' : 'admin'
+    setCurrentView(newView)
+    
+    // 根据新视图跳转到对应的首页
+    if (newView === 'admin') {
+      navigate('/admin')
+    } else {
+      navigate('/user')
+    }
+    
     setMobileMenuVisible(false)
   }
 
@@ -121,12 +138,32 @@ const Layout = ({ userType }) => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
 
   // 监听窗口大小变化
-  React.useEffect(() => {
+  useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768)
     }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  // 监听currentView变化，确保菜单正确更新
+  useEffect(() => {
+    // 根据当前路径设置正确的视图
+    if (location.pathname.startsWith('/admin')) {
+      setCurrentView('admin')
+    } else if (location.pathname.startsWith('/user')) {
+      setCurrentView('user')
+    }
+  }, [location.pathname])
+
+  // 初始化currentView
+  useEffect(() => {
+    // 根据当前路径初始化视图
+    if (location.pathname.startsWith('/admin')) {
+      setCurrentView('admin')
+    } else if (location.pathname.startsWith('/user')) {
+      setCurrentView('user')
+    }
   }, [])
 
   const siderContent = (
@@ -222,9 +259,9 @@ const Layout = ({ userType }) => {
               fontWeight: 'bold',
               lineHeight: 1.2
             }}>
-              {userType === 'admin' ? 'ThumbStar Admin' : 'ThumbStar'}
+              {currentView === 'admin' ? 'ThumbStar Admin' : 'ThumbStar'}
             </h2>
-            {userType !== 'admin' && (
+            {currentView !== 'admin' && (
               <div style={{
                 fontSize: isMobile ? 10 : 12,
                 color: '#666',
@@ -238,6 +275,23 @@ const Layout = ({ userType }) => {
               </div>
             )}
           </div>
+
+          {/* 管理员视图切换按钮 */}
+          {user?.isAdmin && (
+            <Button
+              type="primary"
+              icon={<SwapOutlined />}
+              onClick={handleViewToggle}
+              size={isMobile ? 'small' : 'middle'}
+              style={{
+                marginRight: isMobile ? 8 : 12,
+                background: currentView === 'admin' ? '#52c41a' : '#1890ff',
+                borderColor: currentView === 'admin' ? '#52c41a' : '#1890ff'
+              }}
+            >
+              {!isMobile && (currentView === 'admin' ? '用户界面' : '管理界面')}
+            </Button>
+          )}
 
           {/* 用户信息 */}
           <Space size={isMobile ? 8 : 12}>

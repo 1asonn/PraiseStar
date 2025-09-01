@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Card,
   Table,
@@ -19,42 +19,81 @@ import {
   UserOutlined
 } from '@ant-design/icons'
 import { useAuth } from '../../contexts/AuthContext'
-import { getUserRankings, mockUsers } from '../../data/mockData'
+import { rankingsService } from '../../services/rankingsService'
+import { message } from 'antd'
 
 const Ranking = () => {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('year')
+  const [loading, setLoading] = useState(false)
+  const [rankings, setRankings] = useState({
+    year: [],
+    month: [],
+    quarter: []
+  })
+  const [myRanking, setMyRanking] = useState({
+    year: null,
+    month: null,
+    quarter: null
+  })
 
   // 获取排名数据
-  const yearRankings = getUserRankings()
-  
-  // 模拟月度和季度排名数据
-  const monthRankings = mockUsers
-    .map(u => ({
-      id: u.id,
-      name: u.name,
-      department: u.department,
-      receivedThisMonth: u.receivedThisMonth,
-      ranking: 0
-    }))
-    .sort((a, b) => b.receivedThisMonth - a.receivedThisMonth)
-    .map((item, index) => ({ ...item, ranking: index + 1 }))
+  const fetchRankings = async (period) => {
+    if (!user?.id) return
+    
+    setLoading(true)
+    try {
+      const response = await rankingsService.getRankings({ period })
+      if (response.success) {
+        const rankingsData = response.data || []
+        setRankings(prev => ({
+          ...prev,
+          [period]: rankingsData
+        }))
+      } else {
+        message.error(response.message || '获取排名数据失败')
+      }
+    } catch (error) {
+      console.error('获取排名数据失败:', error)
+      message.error('获取排名数据失败，请稍后重试')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  const quarterRankings = mockUsers
-    .map(u => ({
-      id: u.id,
-      name: u.name,
-      department: u.department,
-      receivedThisQuarter: u.receivedThisQuarter,
-      ranking: 0
-    }))
-    .sort((a, b) => b.receivedThisQuarter - a.receivedThisQuarter)
-    .map((item, index) => ({ ...item, ranking: index + 1 }))
+  // 获取我的排名信息
+  const fetchMyRanking = async (period) => {
+    if (!user?.id) return
+    
+    try {
+      const response = await rankingsService.getMyRanking({ period })
+      if (response.success) {
+        setMyRanking(prev => ({
+          ...prev,
+          [period]: response.data
+        }))
+      }
+    } catch (error) {
+      console.error('获取我的排名信息失败:', error)
+    }
+  }
+
+  // 初始化数据
+  useEffect(() => {
+    if (user?.id) {
+      fetchRankings('year')
+      fetchRankings('month')
+      fetchRankings('quarter')
+      fetchMyRanking('year')
+      fetchMyRanking('month')
+      fetchMyRanking('quarter')
+    }
+  }, [user?.id])
 
   // 获取当前用户在各个排名中的位置
-  const userYearRank = yearRankings.find(r => r.id === user.id)
-  const userMonthRank = monthRankings.find(r => r.id === user.id)
-  const userQuarterRank = quarterRankings.find(r => r.id === user.id)
+  const userYearRank = myRanking.year
+  const userMonthRank = myRanking.month
+  const userQuarterRank = myRanking.quarter
 
   // 排名图标
   const getRankIcon = (rank) => {
@@ -76,8 +115,8 @@ const Ranking = () => {
   const getColumns = (type) => [
     {
       title: '排名',
-      dataIndex: 'ranking',
-      key: 'ranking',
+      dataIndex: 'rank',
+      key: 'rank',
       width: 80,
       align: 'center',
       render: (rank, record) => (
@@ -86,8 +125,8 @@ const Ranking = () => {
           alignItems: 'center', 
           justifyContent: 'center',
           fontSize: 16,
-          fontWeight: record.id === user.id ? 'bold' : 'normal',
-          color: record.id === user.id ? '#1890ff' : getRankColor(rank)
+          fontWeight: record.user_id === user.id ? 'bold' : 'normal',
+          color: record.user_id === user.id ? '#1890ff' : getRankColor(rank)
         }}>
           {getRankIcon(rank)}
         </div>
@@ -95,23 +134,23 @@ const Ranking = () => {
     },
     {
       title: '姓名',
-      dataIndex: 'name',
-      key: 'name',
+      dataIndex: 'user_name',
+      key: 'user_name',
       render: (name, record) => (
         <Space>
           <Avatar 
             size="small" 
             icon={<UserOutlined />}
             style={{ 
-              backgroundColor: record.id === user.id ? '#1890ff' : '#87d068' 
+              backgroundColor: record.user_id === user.id ? '#1890ff' : '#87d068' 
             }}
           />
           <span style={{ 
-            fontWeight: record.id === user.id ? 'bold' : 'normal',
-            color: record.id === user.id ? '#1890ff' : 'inherit'
+            fontWeight: record.user_id === user.id ? 'bold' : 'normal',
+            color: record.user_id === user.id ? '#1890ff' : 'inherit'
           }}>
             {name}
-            {record.id === user.id && <Tag color="blue" size="small" style={{ marginLeft: 8 }}>我</Tag>}
+            {record.user_id === user.id && <Tag color="blue" size="small" style={{ marginLeft: 8 }}>我</Tag>}
           </span>
         </Space>
       )
@@ -124,26 +163,20 @@ const Ranking = () => {
     },
     {
       title: '获赞数量',
-      key: 'stars',
+      dataIndex: 'total_stars',
+      key: 'total_stars',
       align: 'right',
-      render: (_, record) => {
-        let stars = 0
-        if (type === 'month') stars = record.receivedThisMonth
-        else if (type === 'quarter') stars = record.receivedThisQuarter
-        else stars = record.receivedThisYear
-
-        return (
-          <Space>
-            <StarOutlined style={{ color: '#fadb14' }} />
-            <span style={{ 
-              fontWeight: 'bold',
-              color: record.id === user.id ? '#1890ff' : '#666'
-            }}>
-              {stars}
-            </span>
-          </Space>
-        )
-      }
+      render: (stars, record) => (
+        <Space>
+          <StarOutlined style={{ color: '#fadb14' }} />
+          <span style={{ 
+            fontWeight: 'bold',
+            color: record.user_id === user.id ? '#1890ff' : '#666'
+          }}>
+            {stars}
+          </span>
+        </Space>
+      )
     }
   ]
 
@@ -153,12 +186,16 @@ const Ranking = () => {
       label: '本月排名',
       children: (
         <Table
-          dataSource={monthRankings}
+          dataSource={rankings.month}
           columns={getColumns('month')}
           pagination={false}
           size="small"
-          rowKey="id"
-          rowClassName={(record) => record.id === user.id ? 'user-row' : ''}
+          rowKey="user_id"
+          loading={loading}
+          rowClassName={(record) => record.user_id === user.id ? 'user-row' : ''}
+          locale={{
+            emptyText: '暂无排名数据'
+          }}
         />
       )
     },
@@ -167,12 +204,16 @@ const Ranking = () => {
       label: '本季度排名',
       children: (
         <Table
-          dataSource={quarterRankings}
+          dataSource={rankings.quarter}
           columns={getColumns('quarter')}
           pagination={false}
           size="small"
-          rowKey="id"
-          rowClassName={(record) => record.id === user.id ? 'user-row' : ''}
+          rowKey="user_id"
+          loading={loading}
+          rowClassName={(record) => record.user_id === user.id ? 'user-row' : ''}
+          locale={{
+            emptyText: '暂无排名数据'
+          }}
         />
       )
     },
@@ -181,12 +222,16 @@ const Ranking = () => {
       label: '年度排名',
       children: (
         <Table
-          dataSource={yearRankings}
+          dataSource={rankings.year}
           columns={getColumns('year')}
           pagination={false}
           size="small"
-          rowKey="id"
-          rowClassName={(record) => record.id === user.id ? 'user-row' : ''}
+          rowKey="user_id"
+          loading={loading}
+          rowClassName={(record) => record.user_id === user.id ? 'user-row' : ''}
+          locale={{
+            emptyText: '暂无排名数据'
+          }}
         />
       )
     }
@@ -200,13 +245,13 @@ const Ranking = () => {
           <Card className="card-shadow">
             <Statistic
               title="本月排名"
-              value={userMonthRank?.ranking || '-'}
+              value={userMonthRank?.rank || '-'}
               prefix={<TrophyOutlined style={{ color: '#1890ff' }} />}
               suffix="位"
               valueStyle={{ color: '#1890ff' }}
             />
             <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-              本月获赞 {user.receivedThisMonth} ⭐
+              本月获赞 {userMonthRank?.total_stars || 0} ⭐
             </div>
           </Card>
         </Col>
@@ -215,13 +260,13 @@ const Ranking = () => {
           <Card className="card-shadow">
             <Statistic
               title="季度排名"
-              value={userQuarterRank?.ranking || '-'}
+              value={userQuarterRank?.rank || '-'}
               prefix={<TrophyOutlined style={{ color: '#52c41a' }} />}
               suffix="位"
               valueStyle={{ color: '#52c41a' }}
             />
             <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-              本季度获赞 {user.receivedThisQuarter} ⭐
+              本季度获赞 {userQuarterRank?.total_stars || 0} ⭐
             </div>
           </Card>
         </Col>
@@ -230,13 +275,13 @@ const Ranking = () => {
           <Card className="card-shadow">
             <Statistic
               title="年度排名"
-              value={userYearRank?.ranking || '-'}
+              value={userYearRank?.rank || '-'}
               prefix={<TrophyOutlined style={{ color: '#fa8c16' }} />}
               suffix="位"
               valueStyle={{ color: '#fa8c16' }}
             />
             <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-              年度获赞 {user.receivedThisYear} ⭐
+              年度获赞 {userYearRank?.total_stars || 0} ⭐
             </div>
           </Card>
         </Col>
@@ -251,17 +296,17 @@ const Ranking = () => {
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                     <span>年度目标进度</span>
-                    <span>{Math.round((user.receivedThisYear / 1200) * 100)}%</span>
+                    <span>{Math.round(((userYearRank?.total_stars || 0) / 1200) * 100)}%</span>
                   </div>
                   <Progress
-                    percent={Math.round((user.receivedThisYear / 1200) * 100)}
+                    percent={Math.round(((userYearRank?.total_stars || 0) / 1200) * 100)}
                     strokeColor={{
                       '0%': '#108ee9',
                       '100%': '#87d068',
                     }}
                   />
                   <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-                    目标：1200 ⭐，当前：{user.receivedThisYear} ⭐
+                    目标：1200 ⭐，当前：{userYearRank?.total_stars || 0} ⭐
                   </div>
                 </div>
               </Col>

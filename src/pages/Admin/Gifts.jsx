@@ -122,7 +122,7 @@ const AdminGifts = () => {
         
         // 更新统计数据（保留从API获取的统计数据，这里只更新基础数据）
         const totalGifts = giftsData.length || 0
-        const activeGifts = giftsData.filter(g => g.is_active === 1)?.length || 0
+        const activeGifts = giftsData.filter(g => g.is_active === true)?.length || 0
         const lowStockGifts = giftsData.filter(g => g.stock <= 5)?.length || 0
         setStatistics(prev => ({
           ...prev,
@@ -249,7 +249,7 @@ const AdminGifts = () => {
   const handleToggleStatus = async (giftId, currentStatus) => {
     try {
       const response = await giftsService.updateGift(giftId, {
-        is_active: currentStatus === 1 ? 0 : 1
+        is_active: !currentStatus // 直接取反布尔值
       })
       if (response.success) {
         message.success('状态更新成功')
@@ -271,8 +271,8 @@ const AdminGifts = () => {
         description: values.description,
         stars_cost: values.starsCost,
         stock: values.stock,
-        sort_order: values.sortOrder || 0,
-        image: imageUrl || '/images/gift-placeholder.jpg'
+        sort_order: values.sortOrder || 0
+        // 暂时不传递image字段
       }
 
       let response
@@ -454,7 +454,7 @@ const AdminGifts = () => {
               </span>
             </Space>
             <Switch
-              checked={gift.is_active === 1}
+                              checked={gift.is_active === true}
               onChange={() => handleToggleStatus(gift.id, gift.is_active)}
               size="small"
             />
@@ -564,7 +564,7 @@ const AdminGifts = () => {
       align: 'center',
       render: (isActive, record) => (
         <Switch
-          checked={isActive === 1}
+          checked={isActive === true}
           onChange={() => handleToggleStatus(record.id, isActive)}
           size="small"
         />
@@ -789,17 +789,6 @@ const AdminGifts = () => {
               value={statistics.overview?.currentMonthRedemptions || 0}
               prefix={<ShoppingCartOutlined style={{ color: '#722ed1' }} />}
               valueStyle={{ color: '#722ed1' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12}>
-          <Card className="card-shadow">
-            <Statistic
-              title="兑换状态分布"
-              value={statistics.details?.redemptionStatusStats?.length || 0}
-              prefix={<GiftOutlined style={{ color: '#13c2c2' }} />}
-              suffix="种状态"
-              valueStyle={{ color: '#13c2c2' }}
             />
           </Card>
         </Col>

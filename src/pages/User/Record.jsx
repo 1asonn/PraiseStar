@@ -46,6 +46,27 @@ const Record = () => {
     totalReceivedCount: 0,
     totalGivenCount: 0
   })
+
+  // 根据筛选条件计算显示的统计数据
+  const getDisplaySummary = () => {
+    if (filters.type === 'received') {
+      return {
+        totalReceived: summary.totalReceived,
+        totalGiven: 0,
+        totalReceivedCount: summary.totalReceivedCount,
+        totalGivenCount: 0
+      }
+    } else if (filters.type === 'sent') {
+      return {
+        totalReceived: 0,
+        totalGiven: summary.totalGiven,
+        totalReceivedCount: 0,
+        totalGivenCount: summary.totalGivenCount
+      }
+    } else {
+      return summary
+    }
+  }
   
   // 响应式状态
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
@@ -528,62 +549,80 @@ const Record = () => {
 
              {/* 数据汇总 */}
        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-         <Col xs={12} sm={12} lg={6}>
-           <Card size={isMobile ? 'small' : 'default'}>
-             <Statistic
-               title={<span style={{ fontSize: isMobile ? 12 : 14 }}>收到赞赞星</span>}
-               value={summary.totalReceived}
-               prefix={<StarOutlined style={{ color: '#1890ff' }} />}
-               suffix="⭐"
-               valueStyle={{ 
-                 color: '#1890ff',
-                 fontSize: isMobile ? 16 : 20
-               }}
-             />
-           </Card>
-         </Col>
-         <Col xs={12} sm={12} lg={6}>
-           <Card size={isMobile ? 'small' : 'default'}>
-             <Statistic
-               title={<span style={{ fontSize: isMobile ? 12 : 14 }}>赠送赞赞星</span>}
-               value={summary.totalGiven}
-               prefix={<SendOutlined style={{ color: '#52c41a' }} />}
-               suffix="⭐"
-               valueStyle={{ 
-                 color: '#52c41a',
-                 fontSize: isMobile ? 16 : 20
-               }}
-             />
-           </Card>
-         </Col>
-         <Col xs={12} sm={12} lg={6}>
-           <Card size={isMobile ? 'small' : 'default'}>
-             <Statistic
-               title={<span style={{ fontSize: isMobile ? 12 : 14 }}>收到次数</span>}
-               value={summary.totalReceivedCount}
-               prefix={<StarOutlined style={{ color: '#1890ff' }} />}
-               suffix="次"
-               valueStyle={{ 
-                 color: '#1890ff',
-                 fontSize: isMobile ? 16 : 20
-               }}
-             />
-           </Card>
-         </Col>
-         <Col xs={12} sm={12} lg={6}>
-           <Card size={isMobile ? 'small' : 'default'}>
-             <Statistic
-               title={<span style={{ fontSize: isMobile ? 12 : 14 }}>赠送次数</span>}
-               value={summary.totalGivenCount}
-               prefix={<SendOutlined style={{ color: '#52c41a' }} />}
-               suffix="次"
-               valueStyle={{ 
-                 color: '#52c41a',
-                 fontSize: isMobile ? 16 : 20
-               }}
-             />
-           </Card>
-         </Col>
+         {(() => {
+           const displaySummary = getDisplaySummary()
+           const showReceived = filters.type === 'all' || filters.type === 'received'
+           const showGiven = filters.type === 'all' || filters.type === 'sent'
+           
+           return (
+             <>
+               {showReceived && (
+                 <>
+                   <Col xs={12} sm={12} lg={6}>
+                     <Card size={isMobile ? 'small' : 'default'}>
+                       <Statistic
+                         title={<span style={{ fontSize: isMobile ? 12 : 14 }}>收到赞赞星</span>}
+                         value={displaySummary.totalReceived}
+                         prefix={<StarOutlined style={{ color: '#1890ff' }} />}
+                         suffix="⭐"
+                         valueStyle={{ 
+                           color: '#1890ff',
+                           fontSize: isMobile ? 16 : 20
+                         }}
+                       />
+                     </Card>
+                   </Col>
+                   <Col xs={12} sm={12} lg={6}>
+                     <Card size={isMobile ? 'small' : 'default'}>
+                       <Statistic
+                         title={<span style={{ fontSize: isMobile ? 12 : 14 }}>收到次数</span>}
+                         value={displaySummary.totalReceivedCount}
+                         prefix={<StarOutlined style={{ color: '#1890ff' }} />}
+                         suffix="次"
+                         valueStyle={{ 
+                           color: '#1890ff',
+                           fontSize: isMobile ? 16 : 20
+                         }}
+                       />
+                     </Card>
+                   </Col>
+                 </>
+               )}
+               {showGiven && (
+                 <>
+                   <Col xs={12} sm={12} lg={6}>
+                     <Card size={isMobile ? 'small' : 'default'}>
+                       <Statistic
+                         title={<span style={{ fontSize: isMobile ? 12 : 14 }}>赠送赞赞星</span>}
+                         value={displaySummary.totalGiven}
+                         prefix={<SendOutlined style={{ color: '#52c41a' }} />}
+                         suffix="⭐"
+                         valueStyle={{ 
+                           color: '#52c41a',
+                           fontSize: isMobile ? 16 : 20
+                         }}
+                       />
+                     </Card>
+                   </Col>
+                   <Col xs={12} sm={12} lg={6}>
+                     <Card size={isMobile ? 'small' : 'default'}>
+                       <Statistic
+                         title={<span style={{ fontSize: isMobile ? 12 : 14 }}>赠送次数</span>}
+                         value={displaySummary.totalGivenCount}
+                         prefix={<SendOutlined style={{ color: '#52c41a' }} />}
+                         suffix="次"
+                         valueStyle={{ 
+                           color: '#52c41a',
+                           fontSize: isMobile ? 16 : 20
+                         }}
+                       />
+                     </Card>
+                   </Col>
+                 </>
+               )}
+             </>
+           )
+         })()}
        </Row>
 
              {/* 记录列表 */}

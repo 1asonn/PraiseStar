@@ -35,6 +35,42 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   return children
 }
 
+// 管理员路由守卫组件 - 允许管理员访问所有路由
+const AdminRoute = ({ children }) => {
+  const { user, isAuthenticated, loading } = useAuth()
+  
+  // 如果正在加载认证状态，显示加载中
+  if (loading) {
+    return <AuthLoading />
+  }
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+  
+  if (!user?.isAdmin) {
+    return <Navigate to="/user" replace />
+  }
+  
+  return children
+}
+
+// 用户路由守卫组件 - 允许管理员和普通用户访问
+const UserRoute = ({ children }) => {
+  const { user, isAuthenticated, loading } = useAuth()
+  
+  // 如果正在加载认证状态，显示加载中
+  if (loading) {
+    return <AuthLoading />
+  }
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+  
+  return children
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -45,9 +81,9 @@ function App() {
           
           {/* 普通用户路由 */}
           <Route path="/user" element={
-            <ProtectedRoute>
+            <UserRoute>
               <Layout userType="user" />
-            </ProtectedRoute>
+            </UserRoute>
           }>
             <Route index element={<UserDashboard />} />
             <Route path="give" element={<UserGive />} />
@@ -58,9 +94,9 @@ function App() {
           
           {/* 管理员路由 */}
           <Route path="/admin" element={
-            <ProtectedRoute requireAdmin>
+            <AdminRoute>
               <Layout userType="admin" />
-            </ProtectedRoute>
+            </AdminRoute>
           }>
             <Route index element={<AdminDashboard />} />
             <Route path="users" element={<AdminUsers />} />
