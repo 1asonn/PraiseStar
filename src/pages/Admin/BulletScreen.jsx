@@ -1,413 +1,607 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Card,
   Form,
   InputNumber,
-  Switch,
   Button,
-  TimePicker,
-  Select,
   Input,
   Space,
-  Divider,
   Alert,
   message,
   Row,
   Col,
-  List,
-  Avatar,
-  Tag
+  Tag,
+  Table,
+  Modal,
+  Popconfirm,
+  Typography,
+  Tooltip,
+  Empty
 } from 'antd'
 import {
   SettingOutlined,
   MessageOutlined,
-  StarOutlined,
-  TrophyOutlined,
-  GiftOutlined,
-  SendOutlined
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined
 } from '@ant-design/icons'
-import dayjs from 'dayjs'
+import { feishuConfigAPI } from '../../services/apiClient'
 
-const { Option } = Select
-const { TextArea } = Input
+const { Title, Text } = Typography
 
 const AdminBulletScreen = () => {
-  const [form] = Form.useForm()
+  const [configForm] = Form.useForm()
   
-  // 弹幕设置状态
-  const [bulletSettings, setBulletSettings] = useState({
-    // 赠送弹幕设置
-    giveEnabled: true,
-    giveThreshold: 10, // 赠送超过多少星数时弹幕
-    giveTemplate: '{sender}因{reason}给{receiver}赠送{stars}赞赞星',
-    
-    // 排名弹幕设置
-    rankingEnabled: true,
-    rankingTime: dayjs('09:00', 'HH:mm'), // 每日发送时间
-    rankingTemplate: '今日赞赞星排行榜前五：{ranking}',
-    
-    // 达标弹幕设置
-    achievementEnabled: true,
-    achievementThreshold: 66, // 累计获得多少星数时弹幕
-    achievementTemplate: '{user}今日累计获赠{stars}赞赞星啦~',
-    
-    // 祝贺弹幕设置
-    congratulationEnabled: true,
-    congratulationTemplate: '{sender}给{receiver}送来{stars}赞赞星祝贺',
-    
-    // 飞书群设置
-    feishuGroupId: 'oc_xxx', // 飞书群ID
-    feishuBotToken: 'bot_xxx' // 飞书机器人token
-  })
+  // 飞书配置状态
+  const [feishuConfigs, setFeishuConfigs] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [modalVisible, setModalVisible] = useState(false)
+  const [editingConfig, setEditingConfig] = useState(null)
+  const [testingThreshold, setTestingThreshold] = useState(null)
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
 
-  // 模拟弹幕记录
-  const bulletRecords = [
+  // 监听窗口大小变化
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+  
+
+  // 组件挂载时加载飞书配置
+  useEffect(() => {
+    loadFeishuConfigs()
+  }, [])
+
+  // 加载飞书配置列表
+  const loadFeishuConfigs = async () => {
+    try {
+      setLoading(true)
+      const response = await feishuConfigAPI.getConfigs()
+      if (response.success) {
+        setFeishuConfigs(response.data || [])
+      } else {
+        message.error(response.message || '加载飞书配置失败')
+      }
+    } catch (error) {
+      console.error('加载飞书配置失败:', error)
+      message.error('加载飞书配置失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 打开新增/编辑配置弹窗
+  const handleOpenModal = (config = null) => {
+    setEditingConfig(config)
+    setModalVisible(true)
+    if (config) {
+      configForm.setFieldsValue({
+        threshold: config.threshold,
+        webhook_url: config.webhook_url,
+        template_id: config.template_id,
+        template_version: config.template_version
+      })
+    } else {
+      configForm.resetFields()
+    }
+  }
+
+  // 保存飞书配置
+  const handleSaveConfig = async (values) => {
+    try {
+      setLoading(true)
+      let response
+      
+      if (editingConfig) {
+        // 编辑现有配置
+        response = await feishuConfigAPI.updateConfig(editingConfig.id, values)
+      } else {
+        // 新增配置
+        response = await feishuConfigAPI.saveConfig(values)
+      }
+      
+      if (response.success) {
+        message.success(response.message || '保存成功')
+        setModalVisible(false)
+        configForm.resetFields()
+        setEditingConfig(null)
+        loadFeishuConfigs() // 重新加载列表
+      } else {
+        message.error(response.message || '保存失败')
+      }
+    } catch (error) {
+      console.error('保存飞书配置失败:', error)
+      message.error(error.message || '保存失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 删除飞书配置
+  const handleDeleteConfig = async (id) => {
+    try {
+      setLoading(true)
+      const response = await feishuConfigAPI.deleteConfig(id)
+      if (response.success) {
+        message.success('删除成功')
+        loadFeishuConfigs() // 重新加载列表
+      } else {
+        message.error(response.message || '删除失败')
+      }
+    } catch (error) {
+      console.error('删除飞书配置失败:', error)
+      message.error('删除失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 测试飞书通知
+  const handleTestNotification = async (threshold) => {
+    try {
+      setTestingThreshold(threshold)
+      const response = await feishuConfigAPI.testNotification(threshold, '测试用户')
+      if (response.success) {
+        message.success('测试通知发送成功')
+      } else {
+        message.error(response.message || '测试通知发送失败')
+      }
+    } catch (error) {
+      console.error('测试通知失败:', error)
+      message.error(error.message || '测试通知发送失败')
+    } finally {
+      setTestingThreshold(null)
+    }
+  }
+
+
+  // 飞书配置表格列定义 - 桌面端
+  const desktopColumns = [
     {
-      id: 1,
-      type: 'give',
-      content: '张三因工作表现好给李四赠送15赞赞星',
-      time: '2024-12-15 10:30:00',
-      status: '已发送'
+      title: '阈值',
+      dataIndex: 'threshold',
+      key: 'threshold',
+      width: 100,
+      render: (threshold) => (
+        <Tag color="blue" style={{ fontWeight: 'bold' }}>
+          {threshold} ⭐
+        </Tag>
+      ),
+      sorter: (a, b) => a.threshold - b.threshold
     },
     {
-      id: 2,
-      type: 'ranking',
-      content: '今日赞赞星排行榜前五：耿豪120⭐、超越98⭐、袁倩倩88⭐、王倩95⭐、李四68⭐',
-      time: '2024-12-15 09:00:00',
-      status: '已发送'
+      title: 'Webhook URL',
+      dataIndex: 'webhook_url',
+      key: 'webhook_url',
+      ellipsis: true,
+      render: (url) => (
+        <Tooltip title={url}>
+          <Text code style={{ fontSize: '12px' }}>
+            {url.length > 40 ? `${url.substring(0, 40)}...` : url}
+          </Text>
+        </Tooltip>
+      )
     },
     {
-      id: 3,
-      type: 'achievement',
-      content: '李四今日累计获赠66赞赞星啦~',
-      time: '2024-12-15 16:20:00',
-      status: '已发送'
+      title: '模板ID',
+      dataIndex: 'template_id',
+      key: 'template_id',
+      width: 120,
+      render: (templateId) => (
+        <Text code style={{ fontSize: '12px' }}>
+          {templateId.length > 10 ? `${templateId.substring(0, 10)}...` : templateId}
+        </Text>
+      )
     },
     {
-      id: 4,
-      type: 'congratulation',
-      content: '王倩给张三送来8赞赞星祝贺',
-      time: '2024-12-15 14:15:00',
-      status: '已发送'
+      title: '版本',
+      dataIndex: 'template_version',
+      key: 'template_version',
+      width: 80,
+      render: (version) => (
+        <Tag color="green" size="small">{version}</Tag>
+      )
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 120,
+      fixed: 'right',
+      render: (_, record) => (
+        <Space size="small">
+          <Tooltip title="测试">
+            <Button
+              type="primary"
+              size="small"
+              loading={testingThreshold === record.threshold}
+              onClick={() => handleTestNotification(record.threshold)}
+            >
+              测试
+            </Button>
+          </Tooltip>
+          <Tooltip title="编辑">
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => handleOpenModal(record)}
+            />
+          </Tooltip>
+          <Popconfirm
+            title="确定删除？"
+            onConfirm={() => handleDeleteConfig(record.id)}
+            okText="确定"
+            cancelText="取消"
+          >
+            <Tooltip title="删除">
+              <Button
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+              />
+            </Tooltip>
+          </Popconfirm>
+        </Space>
+      )
     }
   ]
 
-  // 保存设置
-  const handleSave = async (values) => {
-    try {
-      setBulletSettings({ ...bulletSettings, ...values })
-      message.success('弹幕设置保存成功')
-    } catch (error) {
-      message.error('保存失败')
+  // 飞书配置表格列定义 - 移动端
+  const mobileColumns = [
+    {
+      title: '配置信息',
+      key: 'config',
+      render: (_, record) => (
+        <div style={{ padding: '8px 0' }}>
+          <div style={{ marginBottom: 8 }}>
+            <Tag color="blue" style={{ fontWeight: 'bold', marginRight: 8 }}>
+              {record.threshold} ⭐
+            </Tag>
+            <Tag color="green" size="small">
+              {record.template_version}
+            </Tag>
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <Text strong style={{ fontSize: 12, color: '#666' }}>模板ID: </Text>
+            <Text code style={{ fontSize: 11 }}>
+              {record.template_id}
+            </Text>
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <Text strong style={{ fontSize: 12, color: '#666' }}>Webhook: </Text>
+            <Text code style={{ fontSize: 11 }}>
+              {record.webhook_url.length > 30 ? 
+                `${record.webhook_url.substring(0, 30)}...` : 
+                record.webhook_url
+              }
+            </Text>
+          </div>
+          <Space size="small">
+            <Button
+              type="primary"
+              size="small"
+              loading={testingThreshold === record.threshold}
+              onClick={() => handleTestNotification(record.threshold)}
+            >
+              测试
+            </Button>
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => handleOpenModal(record)}
+            >
+              编辑
+            </Button>
+            <Popconfirm
+              title="确定删除这个配置吗？"
+              onConfirm={() => handleDeleteConfig(record.id)}
+              okText="确定"
+              cancelText="取消"
+            >
+              <Button
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+              >
+                删除
+              </Button>
+            </Popconfirm>
+          </Space>
+        </div>
+      )
     }
-  }
+  ]
 
-  // 测试弹幕
-  const handleTest = (type) => {
-    let testContent = ''
-    switch (type) {
-      case 'give':
-        testContent = '张三因工作表现好给李四赠送15赞赞星'
-        break
-      case 'ranking':
-        testContent = '今日赞赞星排行榜前五：耿豪120⭐、超越98⭐、袁倩倩88⭐、王倩95⭐、李四68⭐'
-        break
-      case 'achievement':
-        testContent = '李四今日累计获赠66赞赞星啦~'
-        break
-      case 'congratulation':
-        testContent = '王倩给张三送来8赞赞星祝贺'
-        break
-    }
-    
-    message.success(`测试弹幕发送成功：${testContent}`)
-  }
-
-  // 获取弹幕类型图标和颜色
-  const getBulletTypeInfo = (type) => {
-    const typeMap = {
-      give: { icon: <SendOutlined />, color: '#52c41a', text: '赠送弹幕' },
-      ranking: { icon: <TrophyOutlined />, color: '#1890ff', text: '排名弹幕' },
-      achievement: { icon: <StarOutlined />, color: '#fa8c16', text: '达标弹幕' },
-      congratulation: { icon: <GiftOutlined />, color: '#eb2f96', text: '祝贺弹幕' }
-    }
-    return typeMap[type] || { icon: <MessageOutlined />, color: '#666', text: '未知类型' }
-  }
+  const feishuConfigColumns = isMobile ? mobileColumns : desktopColumns
 
   return (
     <div>
       <Row gutter={[16, 16]}>
-        {/* 弹幕设置 */}
-        <Col xs={24} lg={16}>
-          <Card title="弹幕设置" className="card-shadow">
-            <Form
-              form={form}
-              layout="vertical"
-              initialValues={bulletSettings}
-              onFinish={handleSave}
-            >
-              {/* 赠送弹幕设置 */}
-              <Card size="small" style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <h4 style={{ margin: 0 }}>
-                    <SendOutlined style={{ color: '#52c41a', marginRight: 8 }} />
-                    赠送弹幕
-                  </h4>
-                  <Form.Item name="giveEnabled" valuePropName="checked" style={{ margin: 0 }}>
-                    <Switch />
-                  </Form.Item>
-                </div>
-                
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      label="触发阈值"
-                      name="giveThreshold"
-                      rules={[{ required: true, message: '请输入触发阈值' }]}
-                    >
-                      <InputNumber
-                        min={1}
-                        style={{ width: '100%' }}
-                        addonAfter="⭐"
-                        placeholder="赠送超过多少星数时触发"
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Space>
-                      <Button size="small" onClick={() => handleTest('give')}>
-                        测试发送
-                      </Button>
-                    </Space>
-                  </Col>
-                </Row>
-                
-                <Form.Item
-                  label="弹幕模板"
-                  name="giveTemplate"
-                  rules={[{ required: true, message: '请输入弹幕模板' }]}
+
+        {/* 飞书配置管理 */}
+        <Col xs={24}>
+          <Card 
+            title={
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: isMobile ? 'flex-start' : 'center',
+                flexDirection: isMobile ? 'column' : 'row',
+                gap: isMobile ? 12 : 0
+              }}>
+                <Title level={isMobile ? 5 : 4} style={{ margin: 0 }}>
+                  <MessageOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+                  飞书阈值配置管理
+                </Title>
+                <Button 
+                  type="primary" 
+                  icon={<PlusOutlined />}
+                  onClick={() => handleOpenModal()}
+                  size={isMobile ? 'middle' : 'default'}
+                  style={isMobile ? { width: '100%' } : {}}
                 >
-                  <Input placeholder="支持变量：{sender} {receiver} {reason} {stars}" />
-                </Form.Item>
-              </Card>
-
-              {/* 排名弹幕设置 */}
-              <Card size="small" style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <h4 style={{ margin: 0 }}>
-                    <TrophyOutlined style={{ color: '#1890ff', marginRight: 8 }} />
-                    排名弹幕
-                  </h4>
-                  <Form.Item name="rankingEnabled" valuePropName="checked" style={{ margin: 0 }}>
-                    <Switch />
-                  </Form.Item>
-                </div>
-                
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      label="发送时间"
-                      name="rankingTime"
-                      rules={[{ required: true, message: '请选择发送时间' }]}
-                    >
-                      <TimePicker
-                        style={{ width: '100%' }}
-                        format="HH:mm"
-                        placeholder="每日定时发送时间"
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Space>
-                      <Button size="small" onClick={() => handleTest('ranking')}>
-                        测试发送
-                      </Button>
-                    </Space>
-                  </Col>
-                </Row>
-                
-                <Form.Item
-                  label="弹幕模板"
-                  name="rankingTemplate"
-                  rules={[{ required: true, message: '请输入弹幕模板' }]}
-                >
-                  <Input placeholder="支持变量：{ranking}" />
-                </Form.Item>
-              </Card>
-
-              {/* 达标弹幕设置 */}
-              <Card size="small" style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <h4 style={{ margin: 0 }}>
-                    <StarOutlined style={{ color: '#fa8c16', marginRight: 8 }} />
-                    达标弹幕
-                  </h4>
-                  <Form.Item name="achievementEnabled" valuePropName="checked" style={{ margin: 0 }}>
-                    <Switch />
-                  </Form.Item>
-                </div>
-                
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      label="达标阈值"
-                      name="achievementThreshold"
-                      rules={[{ required: true, message: '请输入达标阈值' }]}
-                    >
-                      <InputNumber
-                        min={1}
-                        style={{ width: '100%' }}
-                        addonAfter="⭐"
-                        placeholder="累计获得多少星数时触发"
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Space>
-                      <Button size="small" onClick={() => handleTest('achievement')}>
-                        测试发送
-                      </Button>
-                    </Space>
-                  </Col>
-                </Row>
-                
-                <Form.Item
-                  label="弹幕模板"
-                  name="achievementTemplate"
-                  rules={[{ required: true, message: '请输入弹幕模板' }]}
-                >
-                  <Input placeholder="支持变量：{user} {stars}" />
-                </Form.Item>
-              </Card>
-
-              {/* 祝贺弹幕设置 */}
-              <Card size="small" style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <h4 style={{ margin: 0 }}>
-                    <GiftOutlined style={{ color: '#eb2f96', marginRight: 8 }} />
-                    祝贺弹幕
-                  </h4>
-                  <Form.Item name="congratulationEnabled" valuePropName="checked" style={{ margin: 0 }}>
-                    <Switch />
-                  </Form.Item>
-                </div>
-                
-                <Row gutter={16}>
-                  <Col span={18}>
-                    <Form.Item
-                      label="弹幕模板"
-                      name="congratulationTemplate"
-                      rules={[{ required: true, message: '请输入弹幕模板' }]}
-                    >
-                      <Input placeholder="支持变量：{sender} {receiver} {stars}" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={6}>
-                    <Space>
-                      <Button size="small" onClick={() => handleTest('congratulation')}>
-                        测试发送
-                      </Button>
-                    </Space>
-                  </Col>
-                </Row>
-              </Card>
-
-              <Divider />
-
-              {/* 飞书配置 */}
-              <h4>飞书群配置</h4>
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Form.Item
-                    label="飞书群ID"
-                    name="feishuGroupId"
-                    rules={[{ required: true, message: '请输入飞书群ID' }]}
-                  >
-                    <Input placeholder="请输入飞书全员群ID" />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    label="机器人Token"
-                    name="feishuBotToken"
-                    rules={[{ required: true, message: '请输入机器人Token' }]}
-                  >
-                    <Input placeholder="请输入飞书机器人Token" />
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              <Form.Item>
-                <Button type="primary" htmlType="submit" icon={<SettingOutlined />}>
-                  保存设置
+                  新增配置
                 </Button>
-              </Form.Item>
-            </Form>
+              </div>
+            }
+            className="card-shadow"
+          >
+            {feishuConfigs.length > 0 ? (
+              <Table
+                columns={feishuConfigColumns}
+                dataSource={feishuConfigs}
+                loading={loading}
+                rowKey="id"
+                pagination={isMobile ? {
+                  pageSize: 5,
+                  showSizeChanger: false,
+                  showQuickJumper: false,
+                  simple: true,
+                  showTotal: (total) => `共 ${total} 条`
+                } : {
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  showQuickJumper: true,
+                  showTotal: (total, range) => 
+                    `第 ${range[0]}-${range[1]} 条，共 ${total} 条配置`
+                }}
+                scroll={isMobile ? { x: 'max-content' } : { x: 800 }}
+                size={isMobile ? 'small' : 'middle'}
+              />
+            ) : (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="暂无飞书配置"
+                style={{ margin: '40px 0' }}
+              >
+                <Button 
+                  type="primary" 
+                  icon={<PlusOutlined />}
+                  onClick={() => handleOpenModal()}
+                >
+                  立即创建
+                </Button>
+              </Empty>
+            )}
           </Card>
         </Col>
 
-        {/* 弹幕记录 */}
-        <Col xs={24} lg={8}>
-          <Card title="最近弹幕记录" className="card-shadow">
-            <List
-              dataSource={bulletRecords}
-              renderItem={item => {
-                const typeInfo = getBulletTypeInfo(item.type)
-                return (
-                  <List.Item>
-                    <List.Item.Meta
-                      avatar={
-                        <Avatar 
-                          icon={typeInfo.icon} 
-                          style={{ backgroundColor: typeInfo.color }} 
-                        />
-                      }
-                      title={
-                        <Space>
-                          <Tag color={typeInfo.color} size="small">
-                            {typeInfo.text}
-                          </Tag>
-                          <Tag color="green" size="small">
-                            {item.status}
-                          </Tag>
-                        </Space>
-                      }
-                      description={
-                        <div>
-                          <div style={{ fontSize: 12, marginBottom: 4 }}>
-                            {item.content}
-                          </div>
-                          <div style={{ fontSize: 11, color: '#999' }}>
-                            {item.time}
-                          </div>
-                        </div>
-                      }
-                    />
-                  </List.Item>
-                )
-              }}
-            />
-          </Card>
 
-          {/* 设置说明 */}
-          <Card title="设置说明" className="card-shadow" style={{ marginTop: 16 }}>
-            <Alert
-              message="弹幕功能说明"
-              description={
-                <ul style={{ marginBottom: 0, paddingLeft: 16, fontSize: 12 }}>
-                  <li>赠送弹幕：当赠送超过设定数量时自动发送</li>
-                  <li>排名弹幕：每日定时发送前五名排行榜</li>
-                  <li>达标弹幕：当累计获赞达到阈值时发送</li>
-                  <li>祝贺弹幕：选择祝贺理由赠送时发送</li>
-                  <li>所有弹幕都会发送到指定的飞书群中</li>
-                </ul>
-              }
-              type="info"
-              showIcon
-            />
-          </Card>
+        {/* 配置统计和说明 */}
+        <Col xs={24}>
+          <Row gutter={[16, 16]}>
+            {/* 配置统计 */}
+            <Col xs={24} lg={12}>
+              <Card title="配置统计" className="card-shadow">
+                <Row gutter={[8, 16]}>
+                  <Col xs={8} sm={8}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ 
+                        fontSize: isMobile ? 24 : 32, 
+                        fontWeight: 'bold', 
+                        color: '#1890ff' 
+                      }}>
+                        {feishuConfigs.length}
+                      </div>
+                      <div style={{ 
+                        fontSize: isMobile ? 12 : 14, 
+                        color: '#666' 
+                      }}>
+                        配置总数
+                      </div>
+                    </div>
+                  </Col>
+                  <Col xs={8} sm={8}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ 
+                        fontSize: isMobile ? 24 : 32, 
+                        fontWeight: 'bold', 
+                        color: '#52c41a' 
+                      }}>
+                        {feishuConfigs.filter(config => config.is_active).length}
+                      </div>
+                      <div style={{ 
+                        fontSize: isMobile ? 12 : 14, 
+                        color: '#666' 
+                      }}>
+                        激活配置
+                      </div>
+                    </div>
+                  </Col>
+                  <Col xs={8} sm={8}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ 
+                        fontSize: isMobile ? 24 : 32, 
+                        fontWeight: 'bold', 
+                        color: '#fa8c16' 
+                      }}>
+                        {feishuConfigs.length > 0 ? Math.min(...feishuConfigs.map(c => c.threshold)) : '-'}
+                      </div>
+                      <div style={{ 
+                        fontSize: isMobile ? 12 : 14, 
+                        color: '#666' 
+                      }}>
+                        最低阈值
+                      </div>
+                    </div>
+                  </Col>
+                </Row>
+              </Card>
+            </Col>
+
+            {/* 功能说明 */}
+            <Col xs={24} lg={12}>
+              <Card title="功能说明" className="card-shadow">
+                <Alert
+                  message="飞书配置说明"
+                  description={
+                    <ul style={{ 
+                      marginBottom: 0, 
+                      paddingLeft: 16, 
+                      fontSize: isMobile ? 12 : 13 
+                    }}>
+                      <li>支持配置多个阈值，每个阈值对应不同的飞书群</li>
+                      <li>当用户累计获得赞赞星达到某个阈值时，会自动发送飞书通知</li>
+                      <li>可以为每个阈值配置不同的消息模板和Webhook</li>
+                      <li>支持测试功能，确保配置正确可用</li>
+                      <li>配置支持实时编辑和删除，灵活管理</li>
+                    </ul>
+                  }
+                  type="info"
+                  showIcon
+                />
+              </Card>
+            </Col>
+          </Row>
         </Col>
       </Row>
+
+      {/* 新增/编辑飞书配置弹窗 */}
+      <Modal
+        title={editingConfig ? '编辑飞书配置' : '新增飞书配置'}
+        open={modalVisible}
+        onCancel={() => {
+          setModalVisible(false)
+          setEditingConfig(null)
+          configForm.resetFields()
+        }}
+        footer={null}
+        width={isMobile ? '95%' : 600}
+        style={isMobile ? { top: 20 } : {}}
+        destroyOnClose
+      >
+        <Form
+          form={configForm}
+          layout="vertical"
+          onFinish={handleSaveConfig}
+        >
+          <Form.Item
+            name="threshold"
+            label="阈值"
+            rules={[
+              { required: true, message: '请输入阈值' },
+              { type: 'number', min: 1, max: 10000, message: '阈值必须是1-10000之间的整数' }
+            ]}
+          >
+            <InputNumber
+              style={{ width: '100%' }}
+              placeholder="触发飞书通知的星数阈值"
+              addonAfter="⭐"
+              min={1}
+              max={10000}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="webhook_url"
+            label="Webhook URL"
+            rules={[
+              { required: true, message: '请输入Webhook URL' },
+              { type: 'url', message: '请输入有效的URL地址' }
+            ]}
+          >
+            <Input
+              placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..."
+              style={{ fontFamily: 'monospace' }}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="template_id"
+            label="模板ID"
+            rules={[
+              { required: true, message: '请输入模板ID' }
+            ]}
+          >
+            <Input
+              placeholder="AAqkGxxx"
+              style={{ fontFamily: 'monospace' }}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="template_version"
+            label="模板版本"
+            initialValue="1.0.1"
+          >
+            <Input
+              placeholder="1.0.1"
+              style={{ fontFamily: 'monospace' }}
+            />
+          </Form.Item>
+
+          <Alert
+            message="配置说明"
+            description={
+              <ul style={{ 
+                marginBottom: 0, 
+                paddingLeft: 16, 
+                fontSize: isMobile ? 11 : 12 
+              }}>
+                <li>阈值：当用户累计获得赞赞星数达到此值时触发飞书通知</li>
+                <li>Webhook URL：飞书群机器人的Webhook地址</li>
+                <li>模板ID：飞书消息卡片模板的ID</li>
+                <li>模板版本：飞书消息卡片模板的版本号</li>
+              </ul>
+            }
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+
+          <Form.Item style={{ 
+            marginBottom: 0, 
+            textAlign: isMobile ? 'center' : 'right' 
+          }}>
+            <Space direction={isMobile ? 'vertical' : 'horizontal'} size="middle" style={{ width: isMobile ? '100%' : 'auto' }}>
+              <Button 
+                onClick={() => {
+                  setModalVisible(false)
+                  setEditingConfig(null)
+                  configForm.resetFields()
+                }}
+                style={isMobile ? { width: '100%' } : {}}
+              >
+                取消
+              </Button>
+              <Button 
+                type="primary" 
+                htmlType="submit"
+                loading={loading}
+                icon={<SettingOutlined />}
+                style={isMobile ? { width: '100%' } : {}}
+              >
+                {editingConfig ? '更新配置' : '创建配置'}
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   )
 }

@@ -134,5 +134,75 @@ export const api = {
   },
 }
 
+// 飞书配置相关API
+export const feishuConfigAPI = {
+  // 获取所有飞书配置
+  getConfigs: () => api.get('/feishu/configs'),
+  
+  // 获取单个飞书配置
+  getConfig: (threshold) => api.get(`/feishu/config/${threshold}`),
+  
+  // 创建或更新飞书配置
+  saveConfig: (data) => api.post('/feishu/config', data),
+  
+  // 批量保存飞书配置
+  batchSaveConfigs: (configs) => api.post('/feishu/configs/batch', { configs }),
+  
+  // 更新飞书配置
+  updateConfig: (id, data) => api.put(`/feishu/config/${id}`, data),
+  
+  // 删除飞书配置
+  deleteConfig: (id) => api.delete(`/feishu/config/${id}`),
+  
+  // 测试飞书通知
+  testNotification: (threshold, testUserName = '测试用户') => 
+    api.post('/feishu/test-notification', { threshold, test_user_name: testUserName })
+}
+
+// 系统设置相关API
+export const systemAPI = {
+  // 获取系统设置
+  getSettings: () => api.get('/system/settings'),
+  
+  // 更新系统设置
+  updateSettings: (data) => api.post('/system/settings', data),
+  
+  // 获取分配规则
+  getAllocationRules: () => api.get('/system/allocation-rules'),
+  
+  // 批量设置分配规则
+  setAllocationRules: (rules) => api.post('/system/allocation-rules', { rules }),
+  
+  // 获取单个用户分配规则
+  getUserAllocationRule: (userId) => api.get(`/system/allocation-rules/user/${userId}`),
+  
+  // 设置单个用户分配规则
+  setUserAllocationRule: (userId, data) => api.put(`/system/allocation-rules/user/${userId}`, data),
+  
+  // 删除用户分配规则
+  deleteUserAllocationRule: (userId) => api.delete(`/system/allocation-rules/user/${userId}`),
+  
+  // 获取所有用户
+  getUsers: () => api.get('/system/users'),
+  
+  // 获取系统统计信息
+  getStatistics: () => api.get('/system/statistics')
+}
+
+// 赠送理由相关API
+export const giveReasonAPI = {
+  // 获取赠送理由列表
+  getReasons: () => api.get('/system/give-reasons'),
+  
+  // 添加赠送理由
+  addReason: (reason) => api.post('/system/give-reasons', { reason }),
+  
+  // 更新赠送理由
+  updateReason: (id, reason) => api.put(`/system/give-reasons/${id}`, { reason }),
+  
+  // 删除赠送理由
+  deleteReason: (id) => api.delete(`/system/give-reasons/${id}`)
+}
+
 // 导出axios实例，供特殊情况使用
 export default apiClient
