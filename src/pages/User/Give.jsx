@@ -25,7 +25,7 @@ import {
   InfoCircleOutlined
 } from '@ant-design/icons'
 import { useAuth } from '../../contexts/AuthContext'
-import { giveReasons } from '../../data/mockData'
+import { giveReasonAPI } from '../../services/apiClient'
 import { starsService } from '../../services/starsService'
 
 const { Option } = Select
@@ -37,6 +37,8 @@ const Give = () => {
   const [selectedUser, setSelectedUser] = useState(null)
   const [availableUsers, setAvailableUsers] = useState([])
   const [loadingUsers, setLoadingUsers] = useState(false)
+  const [giveReasons, setGiveReasons] = useState([])
+  const [loadingReasons, setLoadingReasons] = useState(false)
   const { user, refreshUser } = useAuth()
 
   // 获取可用用户列表
@@ -57,9 +59,28 @@ const Give = () => {
     }
   }
 
-  // 组件加载时获取可用用户
+  // 获取赠送理由列表
+  const fetchGiveReasons = async () => {
+    setLoadingReasons(true)
+    try {
+      const response = await giveReasonAPI.getReasons()
+      if (response.success) {
+        setGiveReasons(response.data || [])
+      } else {
+        message.error('获取赠送理由失败')
+      }
+    } catch (error) {
+      console.error('获取赠送理由失败:', error)
+      message.error('获取赠送理由失败，请稍后重试')
+    } finally {
+      setLoadingReasons(false)
+    }
+  }
+
+  // 组件加载时获取可用用户和赠送理由
   useEffect(() => {
     fetchAvailableUsers()
+    fetchGiveReasons()
   }, [])
 
   // 将部门用户数据转换为Cascader需要的格式
@@ -269,9 +290,15 @@ const Give = () => {
                 name="reason"
                 rules={[{ required: true, message: '请选择赠送理由' }]}
               >
-                <Select placeholder="请选择赠送理由" size="large">
-                  {giveReasons.map(reason => (
-                    <Option key={reason} value={reason}>{reason}</Option>
+                <Select 
+                  placeholder="请选择赠送理由" 
+                  size="large"
+                  loading={loadingReasons}
+                >
+                  {giveReasons.map(reasonItem => (
+                    <Option key={reasonItem.id} value={reasonItem.reason}>
+                      {reasonItem.reason}
+                    </Option>
                   ))}
                 </Select>
               </Form.Item>

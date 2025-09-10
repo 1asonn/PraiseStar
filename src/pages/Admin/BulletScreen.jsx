@@ -347,7 +347,7 @@ const AdminBulletScreen = () => {
                 >
                   新增配置
                 </Button>
-              </div>
+                </div>
             }
             className="card-shadow"
           >
@@ -385,11 +385,11 @@ const AdminBulletScreen = () => {
                   onClick={() => handleOpenModal()}
                 >
                   立即创建
-                </Button>
+                      </Button>
               </Empty>
             )}
           </Card>
-        </Col>
+                  </Col>
 
 
         {/* 配置统计和说明 */}
@@ -414,7 +414,7 @@ const AdminBulletScreen = () => {
                       }}>
                         配置总数
                       </div>
-                    </div>
+                </div>
                   </Col>
                   <Col xs={8} sm={8}>
                     <div style={{ textAlign: 'center' }}>
@@ -448,18 +448,18 @@ const AdminBulletScreen = () => {
                       }}>
                         最低阈值
                       </div>
-                    </div>
+                </div>
                   </Col>
                 </Row>
-              </Card>
-            </Col>
+          </Card>
+        </Col>
 
             {/* 功能说明 */}
             <Col xs={24} lg={12}>
               <Card title="功能说明" className="card-shadow">
-                <Alert
+            <Alert
                   message="飞书配置说明"
-                  description={
+              description={
                     <ul style={{ 
                       marginBottom: 0, 
                       paddingLeft: 16, 
@@ -470,14 +470,14 @@ const AdminBulletScreen = () => {
                       <li>可以为每个阈值配置不同的消息模板和Webhook</li>
                       <li>支持测试功能，确保配置正确可用</li>
                       <li>配置支持实时编辑和删除，灵活管理</li>
-                    </ul>
-                  }
-                  type="info"
-                  showIcon
-                />
-              </Card>
-            </Col>
-          </Row>
+                </ul>
+              }
+              type="info"
+              showIcon
+            />
+          </Card>
+        </Col>
+      </Row>
         </Col>
       </Row>
 

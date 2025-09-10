@@ -48,6 +48,17 @@ const AdminUsers = () => {
   const [hasMore, setHasMore] = useState(true)
   const [page, setPage] = useState(1)
   const [displayedUsers, setDisplayedUsers] = useState([])
+  
+  // 搜索和分页相关状态
+  const [searchName, setSearchName] = useState('')
+  const [searchDepartment, setSearchDepartment] = useState('')
+  const [total, setTotal] = useState(0)
+  const [pageSize] = useState(10)
+  const [tableLoading, setTableLoading] = useState(false)
+  const [allDepartments] = useState([
+    '研发中心', '市场部', '人力行政部', '总经理办', '财务部'
+  ])
+  
   const [form] = Form.useForm()
   const [adjustForm] = Form.useForm()
   const { getAllUsers,updateUser,addUser } = userApi
@@ -76,12 +87,61 @@ const AdminUsers = () => {
     message.success('已生成随机密码')
   }
 
+  // 加载用户数据
+  const loadUsers = async (currentPage = 1, search = searchName, department = searchDepartment) => {
+    try {
+      setTableLoading(true)
+      const params = {
+        page: currentPage,
+        limit: pageSize
+      }
+      
+      // 添加搜索参数
+      if (search) {
+        params.search = search
+      }
+      if (department) {
+        params.department = department
+      }
+      
+      const response = await getAllUsers(params)
+      
+      if (response.success) {
+        setUsers(response.data)
+        setTotal(response.total || response.pagination?.total || 0)
+        setPage(currentPage)
+        
+        // 设置显示用户数据（移动端和桌面端都需要）
+        if (currentPage === 1) {
+          setDisplayedUsers(response.data)
+        } else {
+          // 只有移动端才追加数据（懒加载）
+          if (isMobile) {
+            setDisplayedUsers(prev => [...prev, ...response.data])
+          } else {
+            setDisplayedUsers(response.data)
+          }
+        }
+        
+        // 移动端懒加载控制
+        if (isMobile) {
+          setHasMore(response.data.length === pageSize)
+        }
+      } else {
+        message.error(response.message || '获取用户列表失败')
+      }
+    } catch (error) {
+      console.error('加载用户数据失败:', error)
+      message.error('加载用户数据失败')
+    } finally {
+      setTableLoading(false)
+      setLoading(false)
+    }
+  }
+
+  // 初始加载
   useEffect(() => {
-    getAllUsers().then(res => {
-      setUsers(res.data)
-      // 初始化显示前10条数据
-      setDisplayedUsers(res.data.slice(0, 10))
-    })
+    loadUsers()
   }, [])
 
   // 懒加载更多数据
@@ -89,22 +149,28 @@ const AdminUsers = () => {
     if (loading || !hasMore) return
     
     setLoading(true)
-    const nextPage = page + 1
-    const pageSize = 10
-    const startIndex = (nextPage - 1) * pageSize
-    const endIndex = startIndex + pageSize
-    
-    // 模拟异步加载
-    setTimeout(() => {
-      const newUsers = users.slice(startIndex, endIndex)
-      if (newUsers.length > 0) {
-        setDisplayedUsers(prev => [...prev, ...newUsers])
-        setPage(nextPage)
-      } else {
-        setHasMore(false)
-      }
-      setLoading(false)
-    }, 500)
+    loadUsers(page + 1)
+  }
+
+  // 搜索处理
+  const handleSearch = () => {
+    setPage(1)
+    setDisplayedUsers([])
+    loadUsers(1, searchName, searchDepartment)
+  }
+
+  // 重置搜索
+  const handleReset = () => {
+    setSearchName('')
+    setSearchDepartment('')
+    setPage(1)
+    setDisplayedUsers([])
+    loadUsers(1, '', '')
+  }
+
+  // 分页变化处理（桌面端）
+  const handlePageChange = (newPage, newPageSize) => {
+    loadUsers(newPage)
   }
 
   // 监听滚动事件
@@ -250,7 +316,6 @@ const AdminUsers = () => {
       职位: user.position,
       本月可赠送: user.availableToGive,
       本月获赠: user.receivedThisMonth,
-      季度累计获赠: user.receivedThisQuarter,
       年度累计获赠: user.receivedThisYear,
       年度已兑换: user.redeemedThisYear,
       剩余可兑换: user.availableToRedeem,
@@ -423,25 +488,6 @@ const AdminUsers = () => {
                 border: '1px solid #f0f0f0'
               }}>
                 <div style={{ fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>
-                  季度累计
-                </div>
-                <div style={{ 
-                  fontSize: '16px', 
-                  fontWeight: 'bold', 
-                  color: '#fa8c16'
-                }}>
-                  {user.receivedThisQuarter} ⭐
-                </div>
-              </div>
-            </Col>
-            <Col span={12}>
-              <div style={{ 
-                backgroundColor: '#fff',
-                padding: '12px',
-                borderRadius: '6px',
-                border: '1px solid #f0f0f0'
-              }}>
-                <div style={{ fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>
                   年度累计
                 </div>
                 <div style={{ 
@@ -503,7 +549,7 @@ const AdminUsers = () => {
       dataIndex: 'name',
       key: 'name',
       fixed: 'left',
-      width: 100,
+      width: 150,
       render: (name, record) => (
         <Space>
           <span>{name}</span>
@@ -547,14 +593,6 @@ const AdminUsers = () => {
       render: (value) => <span style={{ color: '#1890ff' }}>{value} ⭐</span>
     },
     {
-      title: '季度累计获赠',
-      dataIndex: 'receivedThisQuarter',
-      key: 'receivedThisQuarter',
-      width: 110,
-      align: 'center',
-      render: (value) => <span style={{ color: '#52c41a' }}>{value} ⭐</span>
-    },
-    {
       title: '年度累计获赠',
       dataIndex: 'receivedThisYear',
       key: 'receivedThisYear',
@@ -578,18 +616,18 @@ const AdminUsers = () => {
       align: 'center',
       render: (value) => <span style={{ color: '#722ed1' }}>{value} ⭐</span>
     },
-    {
-      title: '排名',
-      dataIndex: 'ranking',
-      key: 'ranking',
-      width: 70,
-      align: 'center',
-      render: (ranking) => (
-        <Tag color={ranking <= 3 ? 'gold' : ranking <= 10 ? 'green' : 'default'}>
-          {ranking}
-        </Tag>
-      )
-    },
+    // {
+    //   title: '排名',
+    //   dataIndex: 'ranking',
+    //   key: 'ranking',
+    //   width: 70,
+    //   align: 'center',
+    //   render: (ranking) => (
+    //     <Tag color={ranking <= 3 ? 'gold' : ranking <= 10 ? 'green' : 'default'}>
+    //       {ranking}
+    //     </Tag>
+    //   )
+    // },
     {
       title: '操作',
       key: 'action',
@@ -638,7 +676,7 @@ const AdminUsers = () => {
            <Card className="card-shadow" size={isMobile ? "small" : "default"}>
              <Statistic
                title={isMobile ? "用户数" : "总用户数"}
-               value={users.length}
+               value={total}
                prefix={<UserOutlined style={{ color: '#1890ff' }} />}
                valueStyle={{ color: '#1890ff', fontSize: isMobile ? '16px' : '24px' }}
              />
@@ -714,6 +752,44 @@ const AdminUsers = () => {
            </Space>
          }
        >
+        {/* 搜索区域 */}
+        <div style={{ marginBottom: 16 }}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={8}>
+              <Input
+                placeholder="搜索用户姓名"
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+                onPressEnter={handleSearch}
+                allowClear
+              />
+            </Col>
+            <Col xs={24} sm={8}>
+              <Select
+                placeholder="选择部门"
+                value={searchDepartment}
+                onChange={setSearchDepartment}
+                allowClear
+                style={{ width: '100%' }}
+              >
+                {/* 使用固定部门列表 */}
+                {allDepartments.map(dept => (
+                  <Option key={dept} value={dept}>{dept}</Option>
+                ))}
+              </Select>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Space>
+                <Button type="primary" onClick={handleSearch} loading={tableLoading}>
+                  搜索
+                </Button>
+                <Button onClick={handleReset}>
+                  重置
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+        </div>
                    {isMobile ? (
             // 移动端列表视图 - 懒加载
             <div 
@@ -775,12 +851,16 @@ const AdminUsers = () => {
              dataSource={users}
              rowKey="id"
              scroll={{ x: 1400 }}
+             loading={tableLoading}
              pagination={{
-               total: users.length,
-               pageSize: 10,
+               total: total,
+               current: page,
+               pageSize: pageSize,
                showSizeChanger: true,
                showQuickJumper: true,
-               showTotal: (total) => `共 ${total} 条记录`
+               showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条记录`,
+               onChange: handlePageChange,
+               onShowSizeChange: handlePageChange
              }}
              size="small"
            />
@@ -964,19 +1044,6 @@ const AdminUsers = () => {
            <Row gutter={isMobile ? 8 : 16}>
              <Col span={isMobile ? 24 : 12}>
                <Form.Item
-                 label="季度累计获赠"
-                 name="receivedThisQuarter"
-                 rules={[{ required: true, message: '请输入数量' }]}
-               >
-                 <InputNumber
-                   min={0}
-                   style={{ width: '100%' }}
-                   addonAfter="⭐"
-                 />
-               </Form.Item>
-             </Col>
-             <Col span={isMobile ? 24 : 12}>
-               <Form.Item
                  label="年度累计获赠"
                  name="receivedThisYear"
                  rules={[{ required: true, message: '请输入数量' }]}
@@ -988,9 +1055,6 @@ const AdminUsers = () => {
                  />
                </Form.Item>
              </Col>
-           </Row>
-
-           <Row gutter={isMobile ? 8 : 16}>
              <Col span={isMobile ? 24 : 12}>
                <Form.Item
                  label="年度已兑换"

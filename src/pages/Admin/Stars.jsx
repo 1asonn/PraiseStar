@@ -41,6 +41,7 @@ import {
   ReloadOutlined
 } from '@ant-design/icons'
 import { systemAPI, giveReasonAPI } from '../../services/apiClient'
+import { starsService } from '../../services/starsService'
 import dayjs from 'dayjs'
 
 const { Option } = Select
@@ -69,6 +70,19 @@ const AdminStars = () => {
     manager: { name: '部门负责人', stars: 200, description: '各部门负责人' },
     employee: { name: '普通员工', stars: 100, description: '其他所有员工' }
   })
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+
+  // 监听窗口大小变化
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
 
   // 系统数据状态
   const [systemSettings, setSystemSettings] = useState({
@@ -89,6 +103,15 @@ const AdminStars = () => {
     activeUsers: 0,
     period: ''
   })
+  
+  // 赠送记录分页和搜索状态
+  const [recordsPage, setRecordsPage] = useState(1)
+  const [recordsPageSize, setRecordsPageSize] = useState(10)
+  const [recordsTotal, setRecordsTotal] = useState(0)
+  const [recordsLoading, setRecordsLoading] = useState(false)
+  const [recordsSearch, setRecordsSearch] = useState('')
+  const [recordsStartDate, setRecordsStartDate] = useState('')
+  const [recordsEndDate, setRecordsEndDate] = useState('')
 
   // 组件挂载时加载数据
   useEffect(() => {
@@ -202,37 +225,46 @@ const AdminStars = () => {
   }
 
   // 加载赠送记录
-  const loadGiveRecords = async () => {
+  const loadGiveRecords = async (page = recordsPage, search = recordsSearch, startDate = recordsStartDate, endDate = recordsEndDate) => {
     try {
-      // TODO: 实现赠送记录API调用
-      // const response = await systemAPI.getGiveRecords()
-      // if (response.success) {
-      //   setGiveRecords(response.data || [])
-      // }
+      setRecordsLoading(true)
+      const params = {
+        page,
+        limit: recordsPageSize
+      }
       
-      // 暂时使用模拟数据
-      setGiveRecords([
-        {
-          id: 1,
-          createTime: '2024-12-15 10:30:00',
-          fromUserName: '张三',
-          toUserName: '李四',
-          stars: 15,
-          reason: '工作表现好',
-          customReason: null
-        },
-        {
-          id: 2,
-          createTime: '2024-12-15 09:00:00',
-          fromUserName: '王倩',
-          toUserName: '张三',
-          stars: 8,
-          reason: '其他',
-          customReason: '协助完成项目'
-        }
-      ])
+      // 添加搜索参数
+      if (search) params.search = search
+      if (startDate) params.startDate = startDate
+      if (endDate) params.endDate = endDate
+      
+      const response = await starsService.getAllGiveRecords(params)
+      
+      if (response.success) {
+        // 转换数据格式以匹配前端显示
+        const formattedRecords = response.data.map(record => ({
+          id: record.id,
+          createTime: record.created_at,
+          fromUserName: record.from_user_name,
+          fromUserDepartment: record.from_user_department,
+          toUserName: record.to_user_name,
+          toUserDepartment: record.to_user_department,
+          stars: record.stars,
+          reason: record.reason,
+          customReason: record.custom_reason
+        }))
+        
+        setGiveRecords(formattedRecords)
+        setRecordsTotal(response.total || response.pagination?.total || 0)
+        setRecordsPage(page)
+      } else {
+        message.error(response.message || '获取赠送记录失败')
+      }
     } catch (error) {
       console.error('加载赠送记录失败:', error)
+      message.error('加载赠送记录失败')
+    } finally {
+      setRecordsLoading(false)
     }
   }
 
@@ -337,11 +369,13 @@ const AdminStars = () => {
     return null
   }
 
-  const allocationColumns = [
+  // 桌面端分配规则表格列定义
+  const desktopAllocationColumns = [
     {
       title: '级别',
       dataIndex: 'level',
       key: 'level',
+      width: 100,
       render: (level) => <Tag color="blue">{level}</Tag>
     },
     {
@@ -366,6 +400,7 @@ const AdminStars = () => {
       title: '分配数量',
       dataIndex: 'stars',
       key: 'stars',
+      width: 120,
       render: (stars) => (
         <Space>
           <StarOutlined style={{ color: '#fadb14' }} />
@@ -376,18 +411,158 @@ const AdminStars = () => {
     {
       title: '说明',
       dataIndex: 'description',
-      key: 'description'
-    },
+      key: 'description',
+      width: 150
+    }
+  ]
+
+  // 移动端分配规则表格列定义
+  const mobileAllocationColumns = [
     {
-      title: '操作',
-      key: 'action',
-      render: () => (
-        <Button type="text" icon={<EditOutlined />} size="small">
-          编辑
-        </Button>
+      title: '分配规则',
+      key: 'allocation',
+      render: (_, record) => (
+        <div style={{ padding: '8px 0' }}>
+          <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Tag color="blue" style={{ fontWeight: 'bold' }}>
+              {record.level}
+            </Tag>
+            <Space>
+              <StarOutlined style={{ color: '#fadb14' }} />
+              <span style={{ fontWeight: 'bold' }}>{record.stars}⭐</span>
+            </Space>
+          </div>
+          
+          <div style={{ marginBottom: 8, fontSize: 12, color: '#666' }}>
+            {record.description}
+          </div>
+          
+          <div>
+            <Text strong style={{ fontSize: 12, color: '#666' }}>适用人员: </Text>
+            {record.users && record.users.length > 0 ? (
+              <div style={{ marginTop: 4 }}>
+                {record.users.map((user, index) => (
+                  <Tag key={index} color="geekblue" size="small" style={{ marginBottom: 4 }}>
+                    {user.name}
+                  </Tag>
+                ))}
+              </div>
+            ) : (
+              <span style={{ color: '#999', fontSize: 12 }}>未分配用户</span>
+            )}
+          </div>
+        </div>
       )
     }
   ]
+
+  const allocationColumns = isMobile ? mobileAllocationColumns : desktopAllocationColumns
+
+  // 赠送记录桌面端列定义
+  const desktopRecordsColumns = [
+    {
+      title: '时间',
+      dataIndex: 'createTime',
+      key: 'createTime',
+      width: 150,
+      render: (time) => dayjs(time).format('MM-DD HH:mm')
+    },
+    {
+      title: '赠送人',
+      key: 'fromUser',
+      width: 150,
+      render: (_, record) => (
+        <div>
+          <div>{record.fromUserName}</div>
+          <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
+            {record.fromUserDepartment}
+          </div>
+        </div>
+      )
+    },
+    {
+      title: '接收人',
+      key: 'toUser',
+      width: 150,
+      render: (_, record) => (
+        <div>
+          <div>{record.toUserName}</div>
+          <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
+            {record.toUserDepartment}
+          </div>
+        </div>
+      )
+    },
+    {
+      title: '数量',
+      dataIndex: 'stars',
+      key: 'stars',
+      width: 80,
+      align: 'center',
+      render: (stars) => (
+        <Tag color="blue">{stars} ⭐</Tag>
+      )
+    },
+    {
+      title: '理由',
+      key: 'reason',
+      render: (_, record) => (
+        <span>
+          {record.customReason || record.reason}
+        </span>
+      )
+    }
+  ]
+
+  // 赠送记录移动端列定义
+  const mobileRecordsColumns = [
+    {
+      title: '记录详情',
+      key: 'recordDetail',
+      render: (_, record) => (
+        <div style={{ padding: '8px 0' }}>
+          {/* 时间和数量 */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '6px'
+          }}>
+            <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
+              {dayjs(record.createTime).format('MM-DD HH:mm')}
+            </span>
+            <Tag color="blue" size="small">{record.stars} ⭐</Tag>
+          </div>
+          
+          {/* 赠送人和接收人 */}
+          <div style={{ marginBottom: '6px' }}>
+            <div style={{ fontSize: '14px', marginBottom: '2px' }}>
+              <span style={{ fontWeight: 'bold' }}>{record.fromUserName}</span>
+              <span style={{ margin: '0 8px', color: '#999' }}>→</span>
+              <span style={{ fontWeight: 'bold' }}>{record.toUserName}</span>
+            </div>
+            <div style={{ fontSize: '11px', color: '#8c8c8c' }}>
+              {record.fromUserDepartment} → {record.toUserDepartment}
+            </div>
+          </div>
+          
+          {/* 理由 */}
+          <div style={{ 
+            fontSize: '12px', 
+            color: '#666',
+            backgroundColor: '#f5f5f5',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            marginTop: '6px'
+          }}>
+            {record.customReason || record.reason}
+          </div>
+        </div>
+      )
+    }
+  ]
+
+  const recordsColumns = isMobile ? mobileRecordsColumns : desktopRecordsColumns
 
   // 保存系统设置
   const handleSaveSettings = async (values) => {
@@ -402,7 +577,7 @@ const AdminStars = () => {
       })
       
       if (response.success) {
-        message.success('设置保存成功')
+      message.success('设置保存成功')
         await loadSystemSettings() // 重新加载设置，这会同时更新levelSettings
       } else {
         message.error(response.message || '设置保存失败')
@@ -461,8 +636,8 @@ const AdminStars = () => {
       
       if (response.success) {
         message.success(editingReason ? '理由编辑成功' : '理由添加成功')
-        setReasonModalVisible(false)
-        reasonForm.resetFields()
+      setReasonModalVisible(false)
+      reasonForm.resetFields()
         setEditingReason(null)
         await loadGiveReasons() // 重新加载理由列表
       } else {
@@ -487,7 +662,7 @@ const AdminStars = () => {
       setLoading(true)
       const response = await giveReasonAPI.deleteReason(reason.id)
       if (response.success) {
-        message.success('删除成功')
+    message.success('删除成功')
         await loadGiveReasons() // 重新加载理由列表
       } else {
         message.error(response.message || '删除失败')
@@ -528,10 +703,10 @@ const AdminStars = () => {
                     </Select>
                   </Form.Item>
 
-                  <Row gutter={16}>
-                    <Col span={8}>
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={8}>
                       <Form.Item
-                        label="高管赞赞星"
+                        label="高管"
                         name="executiveStars"
                         rules={[{ required: true, message: '请输入数量' }]}
                       >
@@ -543,7 +718,7 @@ const AdminStars = () => {
                         />
                       </Form.Item>
                     </Col>
-                    <Col span={8}>
+                    <Col xs={24} sm={8}>
                       <Form.Item
                         label="部门负责人"
                         name="managerStars"
@@ -557,7 +732,7 @@ const AdminStars = () => {
                         />
                       </Form.Item>
                     </Col>
-                    <Col span={8}>
+                    <Col xs={24} sm={8}>
                       <Form.Item
                         label="普通员工"
                         name="employeeStars"
@@ -595,7 +770,7 @@ const AdminStars = () => {
             </Col>
 
             {/* 奖励赞赞星 */}
-            <Col xs={24} lg={12}>
+            {/* <Col xs={24} lg={12}>
               <Card 
                 title="奖励赞赞星" 
                 className="card-shadow"
@@ -632,7 +807,7 @@ const AdminStars = () => {
                   💡 奖励赞赞星可用于兑换礼品
                 </div>
               </Card>
-            </Col>
+            </Col> */}
           </Row>
 
           {/* 分配规则表格 */}
@@ -646,8 +821,9 @@ const AdminStars = () => {
                     type="primary" 
                     icon={<TeamOutlined />}
                     onClick={handleOpenAllocationModal}
+                    size={isMobile ? 'small' : 'default'}
                   >
-                    管理用户分配
+                    {isMobile ? '管理分配' : '管理用户分配'}
                   </Button>
                 }
               >
@@ -663,18 +839,19 @@ const AdminStars = () => {
                   dataSource={allocationRules}
                   columns={allocationColumns}
                   pagination={false}
-                  size="small"
+                  size={isMobile ? 'small' : 'middle'}
                   rowKey="id"
+                  scroll={isMobile ? { x: 'max-content' } : undefined}
                   locale={{
                     emptyText: allocationRules.length === 0 ? (
-                      <div style={{ padding: '40px 0', textAlign: 'center' }}>
+                      <div style={{ padding: isMobile ? '20px 0' : '40px 0', textAlign: 'center' }}>
                         <div style={{ marginBottom: 16 }}>
-                          <StarOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />
+                          <StarOutlined style={{ fontSize: isMobile ? 32 : 48, color: '#d9d9d9' }} />
                         </div>
-                        <div style={{ color: '#999', marginBottom: 16 }}>
+                        <div style={{ color: '#999', marginBottom: 16, fontSize: isMobile ? 14 : 16 }}>
                           暂无分配规则配置
                         </div>
-                        <div style={{ fontSize: 12, color: '#666' }}>
+                        <div style={{ fontSize: isMobile ? 11 : 12, color: '#666' }}>
                           系统将使用默认的分配规则
                         </div>
                       </div>
@@ -707,9 +884,9 @@ const AdminStars = () => {
                 <List.Item
                   actions={[
                     <Tooltip title="编辑理由">
-                      <Button
-                        type="text"
-                        size="small"
+                    <Button
+                      type="text"
+                      size="small"
                         icon={<EditOutlined />}
                         onClick={() => handleOpenReasonModal(reason)}
                         disabled={reason.is_default}
@@ -725,14 +902,14 @@ const AdminStars = () => {
                         cancelText="取消"
                       >
                         <Tooltip title="删除理由">
-                          <Button
-                            type="text"
-                            danger
-                            size="small"
+                      <Button
+                        type="text"
+                        danger
+                        size="small"
                             icon={<DeleteOutlined />}
-                          >
-                            删除
-                          </Button>
+                      >
+                        删除
+                      </Button>
                         </Tooltip>
                       </Popconfirm>
                     )
@@ -767,56 +944,93 @@ const AdminStars = () => {
 
         <TabPane tab="赠送记录" key="records">
           <Card title="赠送记录" className="card-shadow">
+            {/* 搜索和筛选区域 */}
+            <div style={{ marginBottom: 16 }}>
+              <Row gutter={[16, 16]}>
+                <Col xs={24} sm={24} md={8}>
+                  <Input
+                    placeholder="搜索用户姓名或理由"
+                    value={recordsSearch}
+                    onChange={(e) => setRecordsSearch(e.target.value)}
+                    onPressEnter={() => {
+                      setRecordsPage(1)
+                      loadGiveRecords(1, recordsSearch, recordsStartDate, recordsEndDate)
+                    }}
+                    allowClear
+                  />
+                </Col>
+                <Col xs={12} sm={12} md={5}>
+                  <DatePicker
+                    placeholder="开始日期"
+                    value={recordsStartDate ? dayjs(recordsStartDate) : null}
+                    onChange={(date) => setRecordsStartDate(date ? date.format('YYYY-MM-DD') : '')}
+                    style={{ width: '100%' }}
+                  />
+                </Col>
+                <Col xs={12} sm={12} md={5}>
+                  <DatePicker
+                    placeholder="结束日期"
+                    value={recordsEndDate ? dayjs(recordsEndDate) : null}
+                    onChange={(date) => setRecordsEndDate(date ? date.format('YYYY-MM-DD') : '')}
+                    style={{ width: '100%' }}
+                  />
+                </Col>
+                <Col xs={24} sm={24} md={6}>
+                  <Space size="middle" style={{ width: '100%', justifyContent: 'flex-start' }}>
+                    <Button 
+                      type="primary" 
+                      onClick={() => {
+                        setRecordsPage(1)
+                        loadGiveRecords(1, recordsSearch, recordsStartDate, recordsEndDate)
+                      }}
+                      loading={recordsLoading}
+                      style={{ minWidth: '60px' }}
+                    >
+                      搜索
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        setRecordsSearch('')
+                        setRecordsStartDate('')
+                        setRecordsEndDate('')
+                        setRecordsPage(1)
+                        loadGiveRecords(1, '', '', '')
+                      }}
+                      style={{ minWidth: '60px' }}
+                    >
+                      重置
+                    </Button>
+                  </Space>
+                </Col>
+              </Row>
+            </div>
+            
             <Table
-              loading={loading}
+              loading={recordsLoading}
               dataSource={giveRecords}
-              columns={[
-                {
-                  title: '时间',
-                  dataIndex: 'createTime',
-                  key: 'createTime',
-                  width: 150,
-                  render: (time) => dayjs(time).format('MM-DD HH:mm')
-                },
-                {
-                  title: '赠送人',
-                  dataIndex: 'fromUserName',
-                  key: 'fromUserName'
-                },
-                {
-                  title: '接收人',
-                  dataIndex: 'toUserName',
-                  key: 'toUserName'
-                },
-                {
-                  title: '数量',
-                  dataIndex: 'stars',
-                  key: 'stars',
-                  align: 'center',
-                  render: (stars) => (
-                    <Tag color="blue">{stars} ⭐</Tag>
-                  )
-                },
-                {
-                  title: '理由',
-                  key: 'reason',
-                  render: (_, record) => (
-                    <span>
-                      {record.reason === '其他' ? record.customReason : record.reason}
-                    </span>
-                  )
-                }
-              ]}
+              columns={recordsColumns}
               pagination={{
-                total: giveRecords.length,
-                pageSize: 10,
-                showSizeChanger: true,
-                showQuickJumper: true,
+                total: recordsTotal,
+                current: recordsPage,
+                pageSize: recordsPageSize,
+                showSizeChanger: !isMobile,
+                showQuickJumper: !isMobile,
+                simple: isMobile,
                 showTotal: (total, range) => 
-                  `第 ${range[0]}-${range[1]} 条，共 ${total} 条记录`
+                  isMobile 
+                    ? `${range[0]}-${range[1]} / ${total}` 
+                    : `第 ${range[0]}-${range[1]} 条，共 ${total} 条记录`,
+                onChange: (page, pageSize) => {
+                  loadGiveRecords(page)
+                },
+                onShowSizeChange: (current, size) => {
+                  setRecordsPageSize(size)
+                  loadGiveRecords(1)
+                }
               }}
-              size="small"
+              size={isMobile ? 'small' : 'small'}
               rowKey="id"
+              scroll={isMobile ? { x: 'max-content' } : undefined}
             />
           </Card>
         </TabPane>
@@ -956,18 +1170,22 @@ const AdminStars = () => {
         title={
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <TeamOutlined style={{ marginRight: 8, color: '#1890ff' }} />
-            用户分配规则管理
-          </div>
+            {isMobile ? '用户分配管理' : '用户分配规则管理'}
+    </div>
         }
         open={allocationModalVisible}
         onCancel={() => {
           setAllocationModalVisible(false)
         }}
-        width={1000}
+        width={isMobile ? '95%' : 1000}
+        style={isMobile ? { top: 20 } : {}}
         footer={
-          <div style={{ textAlign: 'right' }}>
-            <Space>
-              <Button onClick={() => setAllocationModalVisible(false)}>
+          <div style={{ textAlign: isMobile ? 'center' : 'right' }}>
+            <Space direction={isMobile ? 'vertical' : 'horizontal'} size="middle" style={{ width: isMobile ? '100%' : 'auto' }}>
+              <Button 
+                onClick={() => setAllocationModalVisible(false)}
+                style={isMobile ? { width: '100%' } : {}}
+              >
                 取消
               </Button>
               <Button 
@@ -975,6 +1193,7 @@ const AdminStars = () => {
                 icon={<SaveOutlined />}
                 loading={loading}
                 onClick={handleSaveAllocationRules}
+                style={isMobile ? { width: '100%' } : {}}
               >
                 保存分配规则
               </Button>
@@ -990,11 +1209,11 @@ const AdminStars = () => {
           style={{ marginBottom: 16 }}
         />
 
-        <Row gutter={16}>
+        <Row gutter={[16, 16]}>
           {/* 用户列表 */}
-          <Col span={10}>
+          <Col xs={24} lg={10}>
             <Card title="所有用户" size="small">
-              <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+              <div style={{ maxHeight: isMobile ? 300 : 400, overflowY: 'auto' }}>
                 {loading ? (
                   <div style={{ textAlign: 'center', padding: 20 }}>
                     加载中...
@@ -1008,13 +1227,14 @@ const AdminStars = () => {
                       return (
                         <List.Item
                           style={{ 
-                            padding: '8px 12px',
+                            padding: isMobile ? '6px 8px' : '8px 12px',
                             backgroundColor: currentLevel ? '#f6ffed' : 'transparent'
                           }}
                         >
                           <List.Item.Meta
                             avatar={
                               <Avatar 
+                                size={isMobile ? 'small' : 'default'}
                                 style={{ 
                                   backgroundColor: currentLevel ? '#52c41a' : '#d9d9d9' 
                                 }}
@@ -1023,21 +1243,30 @@ const AdminStars = () => {
                               </Avatar>
                             }
                             title={
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span>{user.name}</span>
+                              <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                flexDirection: isMobile ? 'column' : 'row',
+                                alignItems: isMobile ? 'flex-start' : 'center'
+                              }}>
+                                <span style={{ fontSize: isMobile ? 14 : 16 }}>{user.name}</span>
                                 {currentLevel && (
-                                  <Tag color="green" size="small">
+                                  <Tag color="green" size="small" style={{ marginTop: isMobile ? 4 : 0 }}>
                                     {levelSettings[currentLevel]?.name}
                                   </Tag>
                                 )}
                               </div>
                             }
-                            description={`${user.department} - ${user.position}`}
+                            description={
+                              <div style={{ fontSize: isMobile ? 11 : 12 }}>
+                                {isMobile ? `${user.department}` : `${user.department} - ${user.position}`}
+                              </div>
+                            }
                           />
                           <Select
                             size="small"
-                            style={{ width: 100 }}
-                            placeholder="选择级别"
+                            style={{ width: isMobile ? 80 : 100 }}
+                            placeholder={isMobile ? '级别' : '选择级别'}
                             value={currentLevel}
                             onChange={(newLevel) => handleUserLevelChange(user.id, currentLevel, newLevel)}
                             allowClear
@@ -1056,19 +1285,29 @@ const AdminStars = () => {
           </Col>
 
           {/* 级别分组 */}
-          <Col span={14}>
+          <Col xs={24} lg={14}>
             <Row gutter={[16, 16]}>
               {Object.entries(levelSettings).map(([levelKey, levelInfo]) => (
                 <Col span={24} key={levelKey}>
                   <Card 
                     title={
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Space>
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        flexDirection: isMobile ? 'column' : 'row',
+                        alignItems: isMobile ? 'flex-start' : 'center'
+                      }}>
+                        <Space size="small" wrap>
                           <StarOutlined style={{ color: '#fadb14' }} />
-                          {levelInfo.name}
-                          <Tag color="blue">{levelInfo.stars}⭐</Tag>
+                          <span style={{ fontSize: isMobile ? 14 : 16 }}>{levelInfo.name}</span>
+                          <Tag color="blue" size={isMobile ? 'small' : 'default'}>
+                            {levelInfo.stars}⭐
+                          </Tag>
                         </Space>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
+                        <Text type="secondary" style={{ 
+                          fontSize: isMobile ? 11 : 12,
+                          marginTop: isMobile ? 4 : 0
+                        }}>
                           已分配: {selectedUsers[levelKey]?.length || 0} 人
                         </Text>
                       </div>
@@ -1078,7 +1317,11 @@ const AdminStars = () => {
                       border: selectedUsers[levelKey]?.length > 0 ? '2px solid #52c41a' : '1px solid #d9d9d9'
                     }}
                   >
-                    <div style={{ marginBottom: 8, fontSize: 12, color: '#666' }}>
+                    <div style={{ 
+                      marginBottom: 8, 
+                      fontSize: isMobile ? 11 : 12, 
+                      color: '#666' 
+                    }}>
                       {levelInfo.description}
                     </div>
                     
@@ -1091,7 +1334,11 @@ const AdminStars = () => {
                               key={userId}
                               closable
                               onClose={() => handleUserLevelChange(userId, levelKey, null)}
-                              style={{ marginBottom: 4 }}
+                              style={{ 
+                                marginBottom: 4,
+                                fontSize: isMobile ? 11 : 12
+                              }}
+                              size={isMobile ? 'small' : 'default'}
                             >
                               {user.name}
                             </Tag>
@@ -1102,7 +1349,7 @@ const AdminStars = () => {
                       <Empty 
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
                         description="暂无用户"
-                        style={{ margin: '16px 0' }}
+                        style={{ margin: isMobile ? '12px 0' : '16px 0' }}
                       />
                     )}
                   </Card>
@@ -1114,8 +1361,13 @@ const AdminStars = () => {
 
         <Divider />
         
-        <div style={{ textAlign: 'center', color: '#666', fontSize: 12 }}>
-          💡 提示：在左侧选择用户级别，右侧会显示各级别的用户分配情况
+        <div style={{ 
+          textAlign: 'center', 
+          color: '#666', 
+          fontSize: isMobile ? 11 : 12,
+          padding: isMobile ? '0 8px' : 0
+        }}>
+          💡 提示：{isMobile ? '选择用户级别进行分配' : '在左侧选择用户级别，右侧会显示各级别的用户分配情况'}
         </div>
       </Modal>
     </div>
