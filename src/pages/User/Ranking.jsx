@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Card,
   Table,
@@ -26,29 +26,100 @@ const Ranking = () => {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('year')
   const [loading, setLoading] = useState(false)
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const [rankings, setRankings] = useState({
     year: [],
     month: [],
     quarter: []
+  })
+  // 移动端无限滚动状态
+  const [mobileLoading, setMobileLoading] = useState({
+    year: false,
+    month: false,
+    quarter: false
+  })
+  const [hasMore, setHasMore] = useState({
+    year: true,
+    month: true,
+    quarter: true
   })
   const [myRanking, setMyRanking] = useState({
     year: null,
     month: null,
     quarter: null
   })
+  const [pagination, setPagination] = useState({
+    year: { current: 1, pageSize: 10, total: 0 },
+    month: { current: 1, pageSize: 10, total: 0 },
+    quarter: { current: 1, pageSize: 10, total: 0 }
+  })
+  const [currentUserRanking, setCurrentUserRanking] = useState({
+    year: null,
+    month: null,
+    quarter: null
+  })
+  const [forceUpdate, setForceUpdate] = useState(0)
 
   // 获取排名数据
-  const fetchRankings = async (period) => {
+  const fetchRankings = async (period, page = 1, pageSize = 10, append = false) => {
     if (!user?.id) return
     
-    setLoading(true)
+    if (isMobile && append) {
+      setMobileLoading(prev => ({ ...prev, [period]: true }))
+    } else {
+      setLoading(true)
+    }
+    
     try {
-      const response = await rankingsService.getRankings({ period })
+      console.log(`Fetching rankings for period: ${period}, page: ${page}, pageSize: ${pageSize}, append: ${append}`)
+      const response = await rankingsService.getRankings({ 
+        period, 
+        page, 
+        limit: pageSize 
+      })
+      console.log(`Rankings response for ${period}:`, response)
+      
       if (response.success) {
         const rankingsData = response.data || []
-        setRankings(prev => ({
+        
+        if (isMobile && append) {
+          // 移动端追加数据
+          setRankings(prev => ({
+            ...prev,
+            [period]: [...prev[period], ...rankingsData]
+          }))
+        } else {
+          // 桌面端或首次加载，替换数据
+          setRankings(prev => ({
+            ...prev,
+            [period]: rankingsData
+          }))
+        }
+        
+        // 更新分页信息
+        if (response.pagination) {
+          setPagination(prev => ({
+            ...prev,
+            [period]: {
+              current: response.pagination.current || page,
+              pageSize: response.pagination.limit || pageSize,
+              total: response.pagination.total || 0
+            }
+          }))
+        }
+        
+        // 更新当前用户排名
+        if (response.currentUserRanking !== undefined) {
+          setCurrentUserRanking(prev => ({
+            ...prev,
+            [period]: response.currentUserRanking
+          }))
+        }
+        
+        // 检查是否还有更多数据
+        setHasMore(prev => ({
           ...prev,
-          [period]: rankingsData
+          [period]: response.pagination?.hasNext || false
         }))
       } else {
         message.error(response.message || '获取排名数据失败')
@@ -57,7 +128,11 @@ const Ranking = () => {
       console.error('获取排名数据失败:', error)
       message.error('获取排名数据失败，请稍后重试')
     } finally {
-      setLoading(false)
+      if (isMobile && append) {
+        setMobileLoading(prev => ({ ...prev, [period]: false }))
+      } else {
+        setLoading(false)
+      }
     }
   }
 
@@ -70,7 +145,7 @@ const Ranking = () => {
       if (response.success) {
         setMyRanking(prev => ({
           ...prev,
-          [period]: response.data
+          [period]: response.data.user
         }))
       }
     } catch (error) {
@@ -90,10 +165,94 @@ const Ranking = () => {
     }
   }, [user?.id])
 
+  // 监听窗口大小变化
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   // 获取当前用户在各个排名中的位置
   const userYearRank = myRanking.year
   const userMonthRank = myRanking.month
   const userQuarterRank = myRanking.quarter
+
+  // 移动端排行榜卡片组件
+  const RankingCard = ({ item, index }) => (
+    <Card
+      size="small"
+      style={{ 
+        marginBottom: 12,
+        backgroundColor: item.id === user.id ? '#e6f7ff' : '#fff',
+        border: item.id === user.id ? '1px solid #1890ff' : '1px solid #f0f0f0'
+      }}
+      bodyStyle={{ padding: 12 }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* 排名 */}
+          <div style={{ 
+            width: 32, 
+            height: 32, 
+            borderRadius: '50%', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            backgroundColor: item.ranking <= 3 ? '#fadb14' : '#f5f5f5',
+            color: item.ranking <= 3 ? '#fff' : '#666',
+            fontWeight: 'bold',
+            fontSize: 14
+          }}>
+            {item.ranking <= 3 ? getRankIcon(item.ranking) : item.ranking}
+          </div>
+          
+          {/* 用户信息 */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Avatar 
+                size="small" 
+                icon={<UserOutlined />}
+                style={{ 
+                  backgroundColor: item.id === user.id ? '#1890ff' : item.is_admin ? '#fa8c16' : '#87d068' 
+                }}
+              />
+              <span style={{ 
+                fontWeight: item.id === user.id ? 'bold' : 'normal',
+                color: item.id === user.id ? '#1890ff' : 'inherit',
+                fontSize: 14
+              }}>
+                {item.name}
+              </span>
+              {item.id === user.id && <Tag color="blue" size="small">我</Tag>}
+              {item.is_admin && <Tag color="orange" size="small">管理员</Tag>}
+            </div>
+            <div style={{ display: 'flex', gap: 8, fontSize: 12, color: '#666' }}>
+              <Tag color="geekblue" size="small">{item.department}</Tag>
+              <Tag color="cyan" size="small">{item.position}</Tag>
+            </div>
+          </div>
+        </div>
+        
+        {/* 获赞数量 */}
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ 
+            fontSize: 16, 
+            fontWeight: 'bold',
+            color: item.id === user.id ? '#1890ff' : '#666',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4
+          }}>
+            <StarOutlined style={{ color: '#fadb14' }} />
+            {item.received_stars}
+          </div>
+        </div>
+      </div>
+    </Card>
+  )
 
   // 排名图标
   const getRankIcon = (rank) => {
@@ -115,42 +274,44 @@ const Ranking = () => {
   const getColumns = (type) => [
     {
       title: '排名',
-      dataIndex: 'rank',
-      key: 'rank',
+      dataIndex: 'ranking',
+      key: 'ranking',
       width: 80,
       align: 'center',
-      render: (rank, record) => (
+      responsive: ['md'], // 中等屏幕以上显示
+      render: (ranking, record) => (
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
           fontSize: 16,
-          fontWeight: record.user_id === user.id ? 'bold' : 'normal',
-          color: record.user_id === user.id ? '#1890ff' : getRankColor(rank)
+          fontWeight: record.id === user.id ? 'bold' : 'normal',
+          color: record.id === user.id ? '#1890ff' : getRankColor(ranking)
         }}>
-          {getRankIcon(rank)}
+          {getRankIcon(ranking)}
         </div>
       )
     },
     {
       title: '姓名',
-      dataIndex: 'user_name',
-      key: 'user_name',
+      dataIndex: 'name',
+      key: 'name',
       render: (name, record) => (
         <Space>
           <Avatar 
             size="small" 
             icon={<UserOutlined />}
             style={{ 
-              backgroundColor: record.user_id === user.id ? '#1890ff' : '#87d068' 
+              backgroundColor: record.id === user.id ? '#1890ff' : record.is_admin ? '#fa8c16' : '#87d068' 
             }}
           />
           <span style={{ 
-            fontWeight: record.user_id === user.id ? 'bold' : 'normal',
-            color: record.user_id === user.id ? '#1890ff' : 'inherit'
+            fontWeight: record.id === user.id ? 'bold' : 'normal',
+            color: record.id === user.id ? '#1890ff' : 'inherit'
           }}>
             {name}
-            {record.user_id === user.id && <Tag color="blue" size="small" style={{ marginLeft: 8 }}>我</Tag>}
+            {record.id === user.id && <Tag color="blue" size="small" style={{ marginLeft: 8 }}>我</Tag>}
+            {record.is_admin && <Tag color="orange" size="small" style={{ marginLeft: 8 }}>管理员</Tag>}
           </span>
         </Space>
       )
@@ -159,19 +320,27 @@ const Ranking = () => {
       title: '部门',
       dataIndex: 'department',
       key: 'department',
+      responsive: ['lg'], // 大屏幕以上显示
       render: (department) => <Tag color="geekblue">{department}</Tag>
     },
     {
+      title: '职位',
+      dataIndex: 'position',
+      key: 'position',
+      responsive: ['xl'], // 超大屏幕以上显示
+      render: (position) => <Tag color="cyan">{position}</Tag>
+    },
+    {
       title: '获赞数量',
-      dataIndex: 'total_stars',
-      key: 'total_stars',
+      dataIndex: 'received_stars',
+      key: 'received_stars',
       align: 'right',
       render: (stars, record) => (
         <Space>
           <StarOutlined style={{ color: '#fadb14' }} />
           <span style={{ 
             fontWeight: 'bold',
-            color: record.user_id === user.id ? '#1890ff' : '#666'
+            color: record.id === user.id ? '#1890ff' : '#666'
           }}>
             {stars}
           </span>
@@ -180,60 +349,143 @@ const Ranking = () => {
     }
   ]
 
-  const tabItems = [
-    {
-      key: 'month',
-      label: '本月排名',
-      children: (
+  // 处理分页变化
+  const handleTableChange = (period, pagination) => {
+    fetchRankings(period, pagination.current, pagination.pageSize)
+  }
+
+  // 移动端加载更多数据
+  const loadMoreData = (period) => {
+    if (mobileLoading[period] || !hasMore[period]) return
+    
+    const currentPage = pagination[period]?.current || 1
+    const pageSize = pagination[period]?.pageSize || 10
+    const nextPage = currentPage + 1
+    
+    fetchRankings(period, nextPage, pageSize, true)
+  }
+
+  // 滚动监听和触底检测
+  const scrollContainerRef = useRef(null)
+  
+  const handleScroll = useCallback((e) => {
+    if (!isMobile) return
+    
+    const { scrollTop, scrollHeight, clientHeight } = e.target
+    const threshold = 100 // 距离底部100px时触发加载
+    
+    if (scrollHeight - scrollTop - clientHeight < threshold) {
+      loadMoreData(activeTab)
+    }
+  }, [isMobile, activeTab, mobileLoading, hasMore, pagination])
+
+  // 添加滚动监听
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (container && isMobile) {
+      container.addEventListener('scroll', handleScroll)
+      return () => container.removeEventListener('scroll', handleScroll)
+    }
+  }, [handleScroll, isMobile])
+
+  // 渲染排行榜内容
+  const renderRankingContent = (period) => {
+    const data = rankings[period]
+    const paginationInfo = pagination[period]
+    
+    if (isMobile) {
+      // 移动端卡片视图
+      return (
+        <div>
+          {data.map((item, index) => (
+            <RankingCard key={item.id} item={item} index={index} />
+          ))}
+          
+          {/* 加载更多状态 */}
+          {mobileLoading[period] && (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '20px',
+              color: '#1890ff'
+            }}>
+              <div>加载更多数据中...</div>
+            </div>
+          )}
+          
+          {/* 没有更多数据提示 */}
+          {!hasMore[period] && data.length > 0 && (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '20px',
+              color: '#999',
+              fontSize: '14px'
+            }}>
+              已加载全部数据
+            </div>
+          )}
+          
+          {/* 空数据状态 */}
+          {data.length === 0 && !loading && !mobileLoading[period] && (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '40px 20px',
+              color: '#999'
+            }}>
+              暂无排名数据
+            </div>
+          )}
+          
+          {/* 首次加载状态 */}
+          {loading && data.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '20px' }}>
+              <div>加载中...</div>
+            </div>
+          )}
+        </div>
+      )
+    } else {
+      // 桌面端表格视图
+      return (
         <Table
-          dataSource={rankings.month}
-          columns={getColumns('month')}
-          pagination={false}
+          dataSource={data}
+          columns={getColumns(period)}
+          pagination={{
+            current: paginationInfo.current,
+            pageSize: paginationInfo.pageSize,
+            total: paginationInfo.total,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total) => `共 ${total} 人`,
+            onChange: (page, pageSize) => handleTableChange(period, { current: page, pageSize }),
+            onShowSizeChange: (current, size) => handleTableChange(period, { current: 1, pageSize: size })
+          }}
           size="small"
-          rowKey="user_id"
+          rowKey="id"
           loading={loading}
-          rowClassName={(record) => record.user_id === user.id ? 'user-row' : ''}
+          rowClassName={(record) => record.id === user.id ? 'user-row' : ''}
           locale={{
             emptyText: '暂无排名数据'
           }}
         />
       )
+    }
+  }
+
+  const tabItems = [
+    {
+      key: 'year',
+      label: '年度排名',
+      children: renderRankingContent('year')
+    },
+    {
+      key: 'month',
+      label: '本月排名',
+      children: renderRankingContent('month')
     },
     {
       key: 'quarter',
       label: '本季度排名',
-      children: (
-        <Table
-          dataSource={rankings.quarter}
-          columns={getColumns('quarter')}
-          pagination={false}
-          size="small"
-          rowKey="user_id"
-          loading={loading}
-          rowClassName={(record) => record.user_id === user.id ? 'user-row' : ''}
-          locale={{
-            emptyText: '暂无排名数据'
-          }}
-        />
-      )
-    },
-    {
-      key: 'year',
-      label: '年度排名',
-      children: (
-        <Table
-          dataSource={rankings.year}
-          columns={getColumns('year')}
-          pagination={false}
-          size="small"
-          rowKey="user_id"
-          loading={loading}
-          rowClassName={(record) => record.user_id === user.id ? 'user-row' : ''}
-          locale={{
-            emptyText: '暂无排名数据'
-          }}
-        />
-      )
+      children: renderRankingContent('quarter')
     }
   ]
 
@@ -245,14 +497,19 @@ const Ranking = () => {
           <Card className="card-shadow">
             <Statistic
               title="本月排名"
-              value={userMonthRank?.rank || '-'}
+              value={myRanking.month?.ranking || currentUserRanking.month || '-'}
               prefix={<TrophyOutlined style={{ color: '#1890ff' }} />}
               suffix="位"
-              valueStyle={{ color: '#1890ff' }}
+              valueStyle={{ color: '#1890ff', fontSize: isMobile ? 20 : 24 }}
             />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-              本月获赞 {userMonthRank?.total_stars || 0} ⭐
+            <div style={{ marginTop: 8, fontSize: isMobile ? 11 : 12, color: '#666' }}>
+              本月获赞 {myRanking.month?.received_stars || 0} ⭐
             </div>
+            {myRanking.month?.monthly_highlights && (
+              <div style={{ marginTop: 4, fontSize: isMobile ? 10 : 11, color: '#52c41a' }}>
+                比上月 {myRanking.month.monthly_highlights.growth_percentage > 0 ? '增长' : '下降'} {Math.abs(myRanking.month.monthly_highlights.growth_percentage)}%
+              </div>
+            )}
           </Card>
         </Col>
         
@@ -260,13 +517,13 @@ const Ranking = () => {
           <Card className="card-shadow">
             <Statistic
               title="季度排名"
-              value={userQuarterRank?.rank || '-'}
+              value={myRanking.quarter?.ranking || currentUserRanking.quarter || '-'}
               prefix={<TrophyOutlined style={{ color: '#52c41a' }} />}
               suffix="位"
-              valueStyle={{ color: '#52c41a' }}
+              valueStyle={{ color: '#52c41a', fontSize: isMobile ? 20 : 24 }}
             />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-              本季度获赞 {userQuarterRank?.total_stars || 0} ⭐
+            <div style={{ marginTop: 8, fontSize: isMobile ? 11 : 12, color: '#666' }}>
+              本季度获赞 {myRanking.quarter?.received_stars || 0} ⭐
             </div>
           </Card>
         </Col>
@@ -275,20 +532,20 @@ const Ranking = () => {
           <Card className="card-shadow">
             <Statistic
               title="年度排名"
-              value={userYearRank?.rank || '-'}
+              value={myRanking.year?.ranking || currentUserRanking.year || '-'}
               prefix={<TrophyOutlined style={{ color: '#fa8c16' }} />}
               suffix="位"
-              valueStyle={{ color: '#fa8c16' }}
+              valueStyle={{ color: '#fa8c16', fontSize: isMobile ? 20 : 24 }}
             />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-              年度获赞 {userYearRank?.total_stars || 0} ⭐
+            <div style={{ marginTop: 8, fontSize: isMobile ? 11 : 12, color: '#666' }}>
+              年度获赞 {myRanking.year?.received_stars || 0} ⭐
             </div>
           </Card>
         </Col>
       </Row>
 
       {/* 排名进度 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      {/* <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col span={24}>
           <Card title="排名进度分析" className="card-shadow">
             <Row gutter={[16, 16]}>
@@ -331,15 +588,25 @@ const Ranking = () => {
             </Row>
           </Card>
         </Col>
-      </Row>
+      </Row> */}
 
       {/* 排行榜 */}
       <Card title="全员排行榜" className="card-shadow">
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={tabItems}
-        />
+        <div 
+          ref={scrollContainerRef}
+          className={isMobile ? 'ranking-scroll-container' : ''}
+          style={{
+            maxHeight: isMobile ? '70vh' : 'auto',
+            overflowY: isMobile ? 'auto' : 'visible',
+            paddingRight: isMobile ? '8px' : '0'
+          }}
+        >
+          <Tabs
+            activeKey={activeTab}
+            onChange={setActiveTab}
+            items={tabItems}
+          />
+        </div>
       </Card>
 
       <style jsx>{`
@@ -348,6 +615,79 @@ const Ranking = () => {
         }
         :global(.user-row:hover) {
           background-color: #bae7ff !important;
+        }
+        
+        /* 移动端样式优化 */
+        @media (max-width: 768px) {
+          :global(.ant-card-body) {
+            padding: 12px !important;
+          }
+          
+          :global(.ant-statistic-title) {
+            font-size: 12px !important;
+          }
+          
+          :global(.ant-statistic-content) {
+            font-size: 18px !important;
+          }
+          
+          :global(.ant-tabs-tab) {
+            font-size: 14px !important;
+            padding: 8px 12px !important;
+          }
+          
+          :global(.ant-tabs-content-holder) {
+            padding-top: 12px !important;
+          }
+          
+          :global(.ant-avatar) {
+            width: 24px !important;
+            height: 24px !important;
+            line-height: 24px !important;
+          }
+          
+          :global(.ant-tag) {
+            font-size: 10px !important;
+            padding: 2px 6px !important;
+            margin: 2px !important;
+          }
+        }
+        
+        /* 移动端卡片样式 */
+        @media (max-width: 768px) {
+          .ranking-card {
+            border-radius: 8px !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+          }
+          
+          .ranking-card .ant-card-body {
+            padding: 12px !important;
+          }
+          
+          /* 滚动容器样式 */
+          .ranking-scroll-container {
+            -webkit-overflow-scrolling: touch !important;
+            scroll-behavior: smooth !important;
+          }
+          
+          /* 滚动条样式 */
+          .ranking-scroll-container::-webkit-scrollbar {
+            width: 4px !important;
+          }
+          
+          .ranking-scroll-container::-webkit-scrollbar-track {
+            background: #f1f1f1 !important;
+            border-radius: 2px !important;
+          }
+          
+          .ranking-scroll-container::-webkit-scrollbar-thumb {
+            background: #c1c1c1 !important;
+            border-radius: 2px !important;
+          }
+          
+          .ranking-scroll-container::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8 !important;
+          }
         }
       `}</style>
     </div>

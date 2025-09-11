@@ -20,6 +20,7 @@ const Dashboard = () => {
   const [recentReceived, setRecentReceived] = useState([])
   const [recentGiven, setRecentGiven] = useState([])
   const [myRanking, setMyRanking] = useState(null)
+  const [monthlyHighlights, setMonthlyHighlights] = useState(null)
   const [error, setError] = useState(null)
   const [currentUser, setCurrentUser] = useState(user)
 
@@ -84,6 +85,8 @@ const Dashboard = () => {
 
       if (response.success) {
         setMyRanking(response.data.user)
+        // 设置月度亮点数据
+        setMonthlyHighlights(response.data.user.monthly_highlights)
       }
     } catch (error) {
       console.error('获取排名信息失败:', error)
@@ -132,7 +135,10 @@ const Dashboard = () => {
 
   // 计算进度百分比
   const giveProgress = Math.round(((currentUser.monthlyAllocation - currentUser.availableToGive) / currentUser.monthlyAllocation) * 100)
-  const redeemProgress = currentUser.availableToRedeem > 0 ? Math.round((currentUser.redeemedThisYear / (currentUser.redeemedThisYear + currentUser.availableToRedeem)) * 100) : 0
+  
+  // 兑换进度计算：已兑换数量 / 总获得数量 * 100
+  const totalReceivedThisYear = currentUser.redeemedThisYear + currentUser.availableToRedeem
+  const redeemProgress = totalReceivedThisYear > 0 ? Math.round((currentUser.redeemedThisYear / totalReceivedThisYear) * 100) : 0
 
   // 格式化时间
   const formatTime = (timeStr) => {
@@ -263,7 +269,15 @@ const Dashboard = () => {
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span>已赠送</span>
-                <span>{currentUser.monthlyAllocation - currentUser.availableToGive}/{currentUser.monthlyAllocation} ⭐</span>
+                <span>{currentUser.monthlyAllocation - currentUser.availableToGive} ⭐</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span>可赠送</span>
+                <span>{currentUser.availableToGive} ⭐</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12, color: '#666' }}>
+                <span>月度配额</span>
+                <span>{currentUser.monthlyAllocation} ⭐</span>
               </div>
               <Progress 
                 percent={giveProgress} 
@@ -271,6 +285,7 @@ const Dashboard = () => {
                   '0%': '#108ee9',
                   '100%': '#87d068',
                 }}
+                format={(percent) => `${percent}%`}
               />
             </div>
             <div style={{ color: '#666', fontSize: 12 }}>
@@ -291,12 +306,17 @@ const Dashboard = () => {
                 <span>可兑换</span>
                 <span>{currentUser.availableToRedeem} ⭐</span>
               </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12, color: '#666' }}>
+                <span>年度总计</span>
+                <span>{totalReceivedThisYear} ⭐</span>
+              </div>
               <Progress 
                 percent={redeemProgress} 
                 strokeColor={{
                   '0%': '#fa541c',
                   '100%': '#faad14',
                 }}
+                format={(percent) => `${percent}%`}
               />
             </div>
             <div style={{ color: '#666', fontSize: 12 }}>
@@ -316,38 +336,52 @@ const Dashboard = () => {
               <a onClick={() => fetchRecentRecords()}>刷新</a>
             }
           >
-                         <List
-               dataSource={recentReceived}
-               locale={{ emptyText: '暂无收到的赞赞星记录' }}
-               renderItem={item => (
-                 <List.Item>
-                   <List.Item.Meta
-                     avatar={<Avatar icon={<StarOutlined />} style={{ backgroundColor: '#1890ff' }} />}
-                                           title={
-                        <Space>
-                          <span>{item.from_user_name || '未知用户'}</span>
-                          <Tag color="blue">+{item.stars}⭐</Tag>
-                        </Space>
-                      }
-                      description={
-                        <div>
-                          <div style={{ marginBottom: 4 }}>
-                            <span style={{ color: '#666' }}>部门: </span>
-                            <span style={{ color: '#1890ff' }}>{item.from_user_department || '未知部门'}</span>
-                          </div>
-                          <div style={{ marginBottom: 4 }}>
-                            <span style={{ color: '#666' }}>理由: </span>
-                            {getDisplayReason(item)}
-                          </div>
-                          <div style={{ fontSize: 12, color: '#999' }}>
-                            {formatTime(item.created_at)}
-                          </div>
+            <List
+              dataSource={recentReceived}
+              locale={{ emptyText: '暂无收到的赞赞星记录' }}
+              renderItem={item => (
+                <List.Item style={{ padding: '12px 0' }}>
+                  <List.Item.Meta
+                    avatar={
+                      <Avatar 
+                        icon={<StarOutlined />} 
+                        style={{ backgroundColor: '#1890ff' }}
+                        size="default"
+                      />
+                    }
+                    title={
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 500, fontSize: 14 }}>
+                          {item.from_user_name || '未知用户'}
+                        </span>
+                        <Tag color="blue" style={{ margin: 0 }}>
+                          +{item.stars}⭐
+                        </Tag>
+                      </div>
+                    }
+                    description={
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ marginBottom: 6, fontSize: 13 }}>
+                          <span style={{ color: '#666' }}>部门: </span>
+                          <span style={{ color: '#1890ff', fontWeight: 500 }}>
+                            {item.from_user_department || '未知部门'}
+                          </span>
                         </div>
-                      }
-                   />
-                 </List.Item>
-               )}
-             />
+                        <div style={{ marginBottom: 6, fontSize: 13 }}>
+                          <span style={{ color: '#666' }}>理由: </span>
+                          <span style={{ color: '#333' }}>
+                            {getDisplayReason(item)}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 12, color: '#999' }}>
+                          {formatTime(item.created_at)}
+                        </div>
+                      </div>
+                    }
+                  />
+                </List.Item>
+              )}
+            />
           </Card>
         </Col>
 
@@ -360,38 +394,52 @@ const Dashboard = () => {
               <a onClick={() => fetchRecentRecords()}>刷新</a>
             }
           >
-                         <List
-               dataSource={recentGiven}
-               locale={{ emptyText: '暂无赠送记录' }}
-               renderItem={item => (
-                 <List.Item>
-                   <List.Item.Meta
-                     avatar={<Avatar icon={<SendOutlined />} style={{ backgroundColor: '#52c41a' }} />}
-                                           title={
-                        <Space>
-                          <span>赠送给 {item.to_user_name || '未知用户'}</span>
-                          <Tag color="green">-{item.stars}⭐</Tag>
-                        </Space>
-                      }
-                      description={
-                        <div>
-                          <div style={{ marginBottom: 4 }}>
-                            <span style={{ color: '#666' }}>部门: </span>
-                            <span style={{ color: '#1890ff' }}>{item.to_user_department || '未知部门'}</span>
-                          </div>
-                          <div style={{ marginBottom: 4 }}>
-                            <span style={{ color: '#666' }}>理由: </span>
-                            {getDisplayReason(item)}
-                          </div>
-                          <div style={{ fontSize: 12, color: '#999' }}>
-                            {formatTime(item.created_at)}
-                          </div>
+            <List
+              dataSource={recentGiven}
+              locale={{ emptyText: '暂无赠送记录' }}
+              renderItem={item => (
+                <List.Item style={{ padding: '12px 0' }}>
+                  <List.Item.Meta
+                    avatar={
+                      <Avatar 
+                        icon={<SendOutlined />} 
+                        style={{ backgroundColor: '#52c41a' }}
+                        size="default"
+                      />
+                    }
+                    title={
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 500, fontSize: 14 }}>
+                          赠送给 {item.to_user_name || '未知用户'}
+                        </span>
+                        <Tag color="green" style={{ margin: 0 }}>
+                          -{item.stars}⭐
+                        </Tag>
+                      </div>
+                    }
+                    description={
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ marginBottom: 6, fontSize: 13 }}>
+                          <span style={{ color: '#666' }}>部门: </span>
+                          <span style={{ color: '#1890ff', fontWeight: 500 }}>
+                            {item.to_user_department || '未知部门'}
+                          </span>
                         </div>
-                      }
-                   />
-                 </List.Item>
-               )}
-             />
+                        <div style={{ marginBottom: 6, fontSize: 13 }}>
+                          <span style={{ color: '#666' }}>理由: </span>
+                          <span style={{ color: '#333' }}>
+                            {getDisplayReason(item)}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 12, color: '#999' }}>
+                          {formatTime(item.created_at)}
+                        </div>
+                      </div>
+                    }
+                  />
+                </List.Item>
+              )}
+            />
           </Card>
         </Col>
       </Row>
@@ -405,10 +453,22 @@ const Dashboard = () => {
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <RiseOutlined style={{ fontSize: 32, color: '#52c41a', marginBottom: 8 }} />
                   <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 4 }}>
-                    本月获赠 {currentUser.receivedThisMonth} ⭐
+                    本月获赠 {monthlyHighlights?.received_this_month || 0} ⭐
                   </div>
                   <div style={{ color: '#666' }}>
-                    比上月增长 12%
+                    {monthlyHighlights?.growth_percentage > 0 ? (
+                      <span style={{ color: '#52c41a' }}>
+                        比上月增长 {monthlyHighlights.growth_percentage}%
+                      </span>
+                    ) : monthlyHighlights?.growth_percentage < 0 ? (
+                      <span style={{ color: '#ff4d4f' }}>
+                        比上月下降 {Math.abs(monthlyHighlights.growth_percentage)}%
+                      </span>
+                    ) : (
+                      <span style={{ color: '#666' }}>
+                        与上月持平
+                      </span>
+                    )}
                   </div>
                 </div>
               </Col>
@@ -416,10 +476,16 @@ const Dashboard = () => {
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <TrophyOutlined style={{ fontSize: 32, color: '#fa8c16', marginBottom: 8 }} />
                   <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 4 }}>
-                    排名第 {myRanking?.rank || currentUser.ranking || '--'} 位
+                    排名第 {myRanking?.ranking || '--'} 位
                   </div>
                   <div style={{ color: '#666' }}>
-                    {(myRanking?.rank || currentUser.ranking) <= 5 ? '表现优秀！' : '继续加油！'}
+                    {myRanking?.ranking && myRanking.ranking <= 5 ? (
+                      <span style={{ color: '#fa8c16' }}>表现优秀！</span>
+                    ) : myRanking?.ranking && myRanking.ranking <= 10 ? (
+                      <span style={{ color: '#1890ff' }}>表现良好！</span>
+                    ) : (
+                      <span style={{ color: '#666' }}>继续加油！</span>
+                    )}
                   </div>
                 </div>
               </Col>
@@ -427,17 +493,104 @@ const Dashboard = () => {
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <StarOutlined style={{ fontSize: 32, color: '#1890ff', marginBottom: 8 }} />
                   <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 4 }}>
-                    活跃指数 85%
+                    活跃指数 {monthlyHighlights?.activity_index || 0}%
                   </div>
                   <div style={{ color: '#666' }}>
-                    团队氛围贡献者
+                    {monthlyHighlights?.is_team_contributor ? (
+                      <span style={{ color: '#52c41a' }}>团队氛围贡献者</span>
+                    ) : (
+                      <span style={{ color: '#666' }}>积极参与团队活动</span>
+                    )}
                   </div>
                 </div>
               </Col>
             </Row>
+            
+            {/* 额外信息展示 */}
+            {/* {monthlyHighlights && (
+              <div style={{ 
+                marginTop: 16, 
+                padding: 16, 
+                background: '#f6f8fa', 
+                borderRadius: 8,
+                border: '1px solid #e1e4e8'
+              }}>
+                <Row gutter={[16, 8]}>
+                  <Col xs={24} sm={12}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: '#666' }}>上月获赠星数：</span>
+                      <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
+                        {monthlyHighlights.last_month_stars} ⭐
+                      </span>
+                    </div>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: '#666' }}>团队总人数：</span>
+                      <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
+                        {myRanking?.total_users || 0} 人
+                      </span>
+                    </div>
+                  </Col>
+                </Row>
+              </div>
+            )} */}
           </Card>
         </Col>
       </Row>
+      
+      <style jsx>{`
+        :global(.card-shadow) {
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          border-radius: 8px;
+        }
+        
+        :global(.ant-statistic-title) {
+          color: #666;
+          font-size: 14px;
+        }
+        
+        :global(.ant-statistic-content) {
+          color: #262626;
+        }
+        
+        :global(.ant-list-item-meta-title) {
+          margin-bottom: 4px;
+        }
+        
+        :global(.ant-list-item-meta-description) {
+          color: #666;
+        }
+        
+        /* 移动端列表优化 */
+        @media (max-width: 768px) {
+          :global(.ant-list-item) {
+            padding: 8px 0 !important;
+          }
+          
+          :global(.ant-list-item-meta-avatar) {
+            margin-right: 12px !important;
+          }
+          
+          :global(.ant-avatar) {
+            width: 36px !important;
+            height: 36px !important;
+            line-height: 36px !important;
+          }
+          
+          :global(.ant-tag) {
+            font-size: 11px !important;
+            padding: 2px 6px !important;
+          }
+        }
+        
+        /* 列表项悬停效果 */
+        :global(.ant-list-item:hover) {
+          background-color: #fafafa;
+          border-radius: 6px;
+          transition: background-color 0.3s ease;
+        }
+      `}</style>
     </div>
   )
 }

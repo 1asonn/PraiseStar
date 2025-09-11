@@ -1,5 +1,6 @@
 import { api } from './apiClient'
 import { API_CONFIG } from './config'
+import axios from 'axios'
 
 // 用户管理相关API服务
 export const userService = {
@@ -290,7 +291,7 @@ export const userService = {
 
       const response = await api.post('/user-data/import', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          // 不设置Content-Type，让浏览器自动设置multipart/form-data with boundary
         }
       })
       return response
@@ -346,12 +347,26 @@ export const userService = {
       const formData = new FormData()
       formData.append('file', file)
 
-      const response = await api.post('/user-data/validate-import', formData, {
+      // 调试信息
+      console.log('FormData contents:')
+      for (let [key, value] of formData.entries()) {
+        console.log(key, value)
+      }
+      console.log('File in FormData:', formData.get('file'))
+      console.log('File type:', typeof formData.get('file'))
+      console.log('Is File instance:', formData.get('file') instanceof File)
+
+      // 使用原生axios实例，避免apiClient的默认配置干扰
+      const token = localStorage.getItem('token')
+      const response = await axios.post(`${API_CONFIG.BASE_URL}/user-data/validate-import`, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          'Authorization': `Bearer ${token}`,
+          // 不设置Content-Type，让浏览器自动设置multipart/form-data with boundary
         }
       })
-      return response
+      
+      console.log('Response:', response.data)
+      return response.data
     } catch (error) {
       console.error('验证导入文件失败:', error)
       throw error

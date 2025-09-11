@@ -21,6 +21,13 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    
+    // 调试信息
+    console.log('Request config:', config)
+    console.log('Request headers:', config.headers)
+    console.log('Request data type:', typeof config.data)
+    console.log('Is FormData:', config.data instanceof FormData)
+    
     return config
   },
   (error) => {

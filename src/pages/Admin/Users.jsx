@@ -71,6 +71,7 @@ const AdminUsers = () => {
     includeStats: false
   })
   const [validationResult, setValidationResult] = useState(null)
+  const [pendingFile, setPendingFile] = useState(null)
   
   const [form] = Form.useForm()
   const [adjustForm] = Form.useForm()
@@ -310,23 +311,6 @@ const AdminUsers = () => {
     }
   }
 
-  // 批量导入
-  const handleBatchImport = (info) => {
-    const { file } = info
-    
-    if (file.status === 'uploading') {
-      return
-    }
-    
-    if (file.status === 'done') {
-      // 不在这里处理，而是在自定义上传中处理
-      return
-    }
-    
-    if (file.status === 'error') {
-      message.error('文件上传失败')
-    }
-  }
 
   // 处理文件导入
   const handleFileImport = async (file) => {
@@ -365,6 +349,59 @@ const AdminUsers = () => {
     }
   }
 
+  // 自定义文件上传处理
+  const customRequest = async (options) => {
+    const { file, onSuccess, onError } = options
+    
+    try {
+      setImportLoading(true)
+      
+      // 获取真正的文件对象
+      const actualFile = file.originFileObj || file
+      
+      // 调试信息
+      console.log('Upload file object:', file)
+      console.log('Actual file object:', actualFile)
+      console.log('File type:', typeof actualFile)
+      console.log('Is File instance:', actualFile instanceof File)
+      
+      // 先验证文件
+      const validationResponse = await userService.validateImportFile(actualFile)
+      
+      if (validationResponse.success) {
+        const result = validationResponse.data
+        setValidationResult(result)
+        
+        if (!result.isValid) {
+          message.error(`文件验证失败：发现 ${result.invalidRows} 行错误数据`)
+          setImportModalVisible(true)
+          onError(new Error('文件验证失败'))
+          return
+        }
+        
+        if (result.warnings.length > 0) {
+          // 有警告，显示确认对话框
+          setPendingFile(actualFile) // 保存文件引用
+          setImportModalVisible(true)
+          onSuccess('验证完成，等待用户确认')
+          return
+        }
+        
+        // 验证通过，直接导入
+        await performImport(actualFile)
+        onSuccess('导入完成')
+      } else {
+        onError(new Error(validationResponse.message || '文件验证失败'))
+      }
+    } catch (error) {
+      console.error('文件处理失败:', error)
+      message.error('文件处理失败，请检查文件格式')
+      onError(error)
+    } finally {
+      setImportLoading(false)
+    }
+  }
+
   // 执行导入
   const performImport = async (file) => {
     try {
@@ -394,8 +431,11 @@ const AdminUsers = () => {
   }
 
   // 确认导入
-  const handleConfirmImport = (file) => {
-    performImport(file)
+  const handleConfirmImport = () => {
+    if (pendingFile) {
+      performImport(pendingFile)
+      setPendingFile(null)
+    }
   }
 
   // 导出数据
@@ -833,8 +873,7 @@ const AdminUsers = () => {
                  <Upload
                    accept=".csv"
                    showUploadList={false}
-                   onChange={handleBatchImport}
-                   beforeUpload={handleFileImport}
+                   customRequest={customRequest}
                  >
                    <Button 
                      icon={<UploadOutlined />} 
@@ -1345,14 +1384,7 @@ const AdminUsers = () => {
                   <Button 
                     type="primary" 
                     loading={importLoading}
-                    onClick={() => {
-                      // 需要获取原始文件进行导入
-                      // 这里需要在验证时保存文件引用
-                      const fileInput = document.querySelector('input[type="file"]')
-                      if (fileInput && fileInput.files[0]) {
-                        handleConfirmImport(fileInput.files[0])
-                      }
-                    }}
+                    onClick={handleConfirmImport}
                   >
                     确认导入
                   </Button>
