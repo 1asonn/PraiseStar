@@ -481,7 +481,7 @@ const Record = () => {
         </p>
       </div>
 
-             {/* 筛选器 */}
+        {/* 筛选器 */}
        <Card style={{ marginBottom: 16 }}>
          <Row gutter={[16, 16]} align="middle">
            <Col xs={24} sm={12} md={6}>
@@ -523,14 +523,21 @@ const Record = () => {
            
            
            <Col xs={24} sm={12} md={4}>
-             <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: '100%' }}>
+             <div style={{ 
+               display: 'flex', 
+               flexDirection: isMobile ? 'column' : 'row',
+               gap: isMobile ? 8 : 8,
+               alignItems: isMobile ? 'stretch' : 'flex-end',
+               height: '100%',
+               paddingTop: isMobile ? 0 : 22 // 与label高度对齐
+             }}>
                <Button
                  type="primary"
                  icon={<FilterOutlined />}
                  onClick={fetchRecords}
                  loading={loading}
                  size={isMobile ? 'small' : 'middle'}
-                 style={isMobile ? { width: '100%' } : {}}
+                 style={{ flex: isMobile ? 'none' : 1 }}
                >
                  筛选
                </Button>
@@ -538,11 +545,11 @@ const Record = () => {
                  icon={<ReloadOutlined />}
                  onClick={resetFilters}
                  size={isMobile ? 'small' : 'middle'}
-                 style={isMobile ? { width: '100%' } : {}}
+                 style={{ flex: isMobile ? 'none' : 1 }}
                >
                  重置
                </Button>
-             </Space>
+             </div>
            </Col>
          </Row>
        </Card>

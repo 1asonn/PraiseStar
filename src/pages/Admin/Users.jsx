@@ -31,7 +31,8 @@ import {
   DownloadOutlined,
   UserOutlined,
   StarOutlined,
-  KeyOutlined
+  KeyOutlined,
+  ReloadOutlined
 } from '@ant-design/icons'
 // import { mockUsers } from '../../data/mockData'
 import { userApi } from '../../services/api'
@@ -72,6 +73,8 @@ const AdminUsers = () => {
   })
   const [validationResult, setValidationResult] = useState(null)
   const [pendingFile, setPendingFile] = useState(null)
+  const [statistics, setStatistics] = useState(null)
+  const [statisticsLoading, setStatisticsLoading] = useState(false)
   
   const [form] = Form.useForm()
   const [adjustForm] = Form.useForm()
@@ -156,6 +159,7 @@ const AdminUsers = () => {
   // 初始加载
   useEffect(() => {
     loadUsers()
+    fetchStatistics()
   }, [])
 
   // 懒加载更多数据
@@ -465,6 +469,22 @@ const AdminUsers = () => {
     } catch (error) {
       console.error('下载模板失败:', error)
       message.error('下载模板失败，请稍后重试')
+    }
+  }
+
+  // 获取统计数据
+  const fetchStatistics = async () => {
+    try {
+      setStatisticsLoading(true)
+      const response = await userService.getStatistics()
+      if (response.success) {
+        setStatistics(response.data)
+      }
+    } catch (error) {
+      console.error('获取统计数据失败:', error)
+      message.error('获取统计数据失败')
+    } finally {
+      setStatisticsLoading(false)
     }
   }
 
@@ -811,15 +831,27 @@ const AdminUsers = () => {
 
   return (
     <div>
-             {/* 统计概览 */}
+        {/* 统计概览 */}
+       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>数据概览</h2>
+         <Button 
+           icon={<ReloadOutlined />} 
+           onClick={fetchStatistics}
+           loading={statisticsLoading}
+           size="small"
+         >
+           刷新数据
+         </Button>
+       </div>
        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
          <Col xs={12} sm={6}>
            <Card className="card-shadow" size={isMobile ? "small" : "default"}>
              <Statistic
                title={isMobile ? "用户数" : "总用户数"}
-               value={total}
+               value={statistics?.overview?.total_users || total}
                prefix={<UserOutlined style={{ color: '#1890ff' }} />}
                valueStyle={{ color: '#1890ff', fontSize: isMobile ? '16px' : '24px' }}
+               loading={statisticsLoading}
              />
            </Card>
          </Col>
@@ -827,29 +859,32 @@ const AdminUsers = () => {
            <Card className="card-shadow" size={isMobile ? "small" : "default"}>
              <Statistic
                title={isMobile ? "管理员" : "管理员数"}
-               value={users.filter(u => u.isAdmin).length}
+               value={statistics?.overview?.admin_count || users.filter(u => u.isAdmin).length}
                prefix={<UserOutlined style={{ color: '#52c41a' }} />}
                valueStyle={{ color: '#52c41a', fontSize: isMobile ? '16px' : '24px' }}
+               loading={statisticsLoading}
              />
            </Card>
          </Col>
          <Col xs={12} sm={6}>
            <Card className="card-shadow" size={isMobile ? "small" : "default"}>
              <Statistic
-               title={isMobile ? "活跃用户" : "活跃用户"}
-               value={users.filter(u => u.receivedThisMonth > 0).length}
+               title={isMobile ? "本月分配" : "本月分配"}
+               value={statistics?.overview?.monthly_allocated || 0}
                prefix={<StarOutlined style={{ color: '#fa8c16' }} />}
                valueStyle={{ color: '#fa8c16', fontSize: isMobile ? '16px' : '24px' }}
+               loading={statisticsLoading}
              />
            </Card>
          </Col>
          <Col xs={12} sm={6}>
            <Card className="card-shadow" size={isMobile ? "small" : "default"}>
              <Statistic
-               title={isMobile ? "部门数" : "部门数量"}
-               value={new Set(users.map(u => u.department)).size}
-               prefix={<UserOutlined style={{ color: '#eb2f96' }} />}
+               title={isMobile ? "本月赠送" : "本月赠送"}
+               value={statistics?.overview?.monthly_given || 0}
+               prefix={<StarOutlined style={{ color: '#eb2f96' }} />}
                valueStyle={{ color: '#eb2f96', fontSize: isMobile ? '16px' : '24px' }}
+               loading={statisticsLoading}
              />
            </Card>
          </Col>

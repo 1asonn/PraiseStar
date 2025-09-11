@@ -371,6 +371,20 @@ export const userService = {
       console.error('验证导入文件失败:', error)
       throw error
     }
+  },
+
+  /**
+   * 获取赞赞星统计数据
+   * @returns {Promise} 统计数据
+   */
+  getStatistics: async () => {
+    try {
+      const response = await api.get('/stars/statistics')
+      return response
+    } catch (error) {
+      console.error('获取统计数据失败:', error)
+      throw error
+    }
   }
 }
 
