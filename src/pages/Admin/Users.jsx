@@ -20,7 +20,8 @@ import {
   List,
   Avatar,
   Divider,
-  Spin
+  Spin,
+  Alert
 } from 'antd'
 import {
   PlusOutlined,
@@ -34,6 +35,7 @@ import {
 } from '@ant-design/icons'
 // import { mockUsers } from '../../data/mockData'
 import { userApi } from '../../services/api'
+import { userService } from '../../services/userService'
 
 const { Option } = Select
 
@@ -58,6 +60,17 @@ const AdminUsers = () => {
   const [allDepartments] = useState([
     '研发中心', '市场部', '人力行政部', '总经理办', '财务部'
   ])
+  
+  // 导入导出相关状态
+  const [exportLoading, setExportLoading] = useState(false)
+  const [importLoading, setImportLoading] = useState(false)
+  const [importModalVisible, setImportModalVisible] = useState(false)
+  const [importOptions, setImportOptions] = useState({
+    updateExisting: false,
+    defaultPassword: '123456',
+    includeStats: false
+  })
+  const [validationResult, setValidationResult] = useState(null)
   
   const [form] = Form.useForm()
   const [adjustForm] = Form.useForm()
@@ -299,32 +312,120 @@ const AdminUsers = () => {
 
   // 批量导入
   const handleBatchImport = (info) => {
-    if (info.file.status === 'done') {
-      message.success('批量导入成功')
-    } else if (info.file.status === 'error') {
-      message.error('批量导入失败')
+    const { file } = info
+    
+    if (file.status === 'uploading') {
+      return
+    }
+    
+    if (file.status === 'done') {
+      // 不在这里处理，而是在自定义上传中处理
+      return
+    }
+    
+    if (file.status === 'error') {
+      message.error('文件上传失败')
     }
   }
 
+  // 处理文件导入
+  const handleFileImport = async (file) => {
+    try {
+      setImportLoading(true)
+      
+      // 先验证文件
+      const validationResponse = await userService.validateImportFile(file)
+      
+      if (validationResponse.success) {
+        const result = validationResponse.data
+        setValidationResult(result)
+        
+        if (!result.isValid) {
+          message.error(`文件验证失败：发现 ${result.invalidRows} 行错误数据`)
+          setImportModalVisible(true)
+          return false // 阻止上传
+        }
+        
+        if (result.warnings.length > 0) {
+          // 有警告，显示确认对话框
+          setImportModalVisible(true)
+          return false // 阻止自动上传，等待用户确认
+        }
+        
+        // 验证通过，直接导入
+        await performImport(file)
+        return false // 阻止默认上传行为
+      }
+    } catch (error) {
+      console.error('文件验证失败:', error)
+      message.error('文件验证失败，请检查文件格式')
+      return false
+    } finally {
+      setImportLoading(false)
+    }
+  }
+
+  // 执行导入
+  const performImport = async (file) => {
+    try {
+      setImportLoading(true)
+      const response = await userService.importUsers(file, importOptions)
+      
+      if (response.success) {
+        const result = response.data
+        message.success(
+          `导入完成！总计 ${result.total} 条，成功 ${result.success} 条，失败 ${result.failed} 条，创建 ${result.created} 条，更新 ${result.updated} 条`
+        )
+        
+        if (result.errors.length > 0) {
+          console.warn('导入警告:', result.errors)
+        }
+        
+        // 刷新用户列表
+        loadUsers()
+        setImportModalVisible(false)
+      }
+    } catch (error) {
+      console.error('导入失败:', error)
+      message.error('导入失败，请稍后重试')
+    } finally {
+      setImportLoading(false)
+    }
+  }
+
+  // 确认导入
+  const handleConfirmImport = (file) => {
+    performImport(file)
+  }
+
   // 导出数据
-  const handleExport = () => {
-    // 模拟导出功能
-    const data = users.map(user => ({
-      姓名: user.name,
-      手机号: user.phone,
-      部门: user.department,
-      职位: user.position,
-      本月可赠送: user.availableToGive,
-      本月获赠: user.receivedThisMonth,
-      年度累计获赠: user.receivedThisYear,
-      年度已兑换: user.redeemedThisYear,
-      剩余可兑换: user.availableToRedeem,
-      当前排名: user.ranking
-    }))
-    
-    // 这里应该实现真正的导出功能
-    console.log('导出数据:', data)
-    message.success('数据导出成功')
+  const handleExport = async (format = 'csv', includeStats = false) => {
+    try {
+      setExportLoading(true)
+      const response = await userService.exportUsers({ format, includeStats })
+      
+      if (response.success) {
+        message.success(response.message || '数据导出成功')
+      }
+    } catch (error) {
+      console.error('导出失败:', error)
+      message.error('导出失败，请稍后重试')
+    } finally {
+      setExportLoading(false)
+    }
+  }
+
+  // 下载导入模板
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await userService.downloadImportTemplate()
+      if (response.success) {
+        message.success(response.message || '模板下载成功')
+      }
+    } catch (error) {
+      console.error('下载模板失败:', error)
+      message.error('下载模板失败，请稍后重试')
+    }
   }
 
   // 移动端用户列表项渲染
@@ -722,19 +823,31 @@ const AdminUsers = () => {
            <Space size={isMobile ? "small" : "middle"}>
              {!isMobile && (
                <>
+                 <Button 
+                   icon={<DownloadOutlined />} 
+                   onClick={handleDownloadTemplate}
+                   size="small"
+                 >
+                   下载模板
+                 </Button>
                  <Upload
-                   accept=".xlsx,.xls,.csv"
+                   accept=".csv"
                    showUploadList={false}
                    onChange={handleBatchImport}
-                   beforeUpload={() => false}
+                   beforeUpload={handleFileImport}
                  >
-                   <Button icon={<UploadOutlined />} size="small">
+                   <Button 
+                     icon={<UploadOutlined />} 
+                     size="small"
+                     loading={importLoading}
+                   >
                      批量导入
                    </Button>
                  </Upload>
                  <Button 
                    icon={<DownloadOutlined />} 
-                   onClick={handleExport}
+                   onClick={() => handleExport('csv', importOptions.includeStats)}
+                   loading={exportLoading}
                    size="small"
                  >
                    导出数据
@@ -1094,6 +1207,160 @@ const AdminUsers = () => {
             </Space>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 导入确认对话框 */}
+      <Modal
+        title="导入确认"
+        open={importModalVisible}
+        onCancel={() => {
+          setImportModalVisible(false)
+          setValidationResult(null)
+        }}
+        footer={null}
+        width={800}
+      >
+        {validationResult && (
+          <div>
+            <div style={{ marginBottom: 16 }}>
+              <h4>文件验证结果</h4>
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <div>
+                  <Tag color="blue">总行数: {validationResult.totalRows}</Tag>
+                  <Tag color="green">有效行数: {validationResult.validRows}</Tag>
+                  <Tag color="red">无效行数: {validationResult.invalidRows}</Tag>
+                </div>
+                
+                {validationResult.errors.length > 0 && (
+                  <div>
+                    <Alert
+                      type="error"
+                      message="发现错误"
+                      description={
+                        <ul style={{ marginBottom: 0, paddingLeft: 20 }}>
+                          {validationResult.errors.slice(0, 5).map((error, index) => (
+                            <li key={index}>{error}</li>
+                          ))}
+                          {validationResult.errors.length > 5 && (
+                            <li>... 还有 {validationResult.errors.length - 5} 个错误</li>
+                          )}
+                        </ul>
+                      }
+                    />
+                  </div>
+                )}
+                
+                {validationResult.warnings.length > 0 && (
+                  <div>
+                    <Alert
+                      type="warning"
+                      message="发现警告"
+                      description={
+                        <ul style={{ marginBottom: 0, paddingLeft: 20 }}>
+                          {validationResult.warnings.slice(0, 5).map((warning, index) => (
+                            <li key={index}>{warning}</li>
+                          ))}
+                          {validationResult.warnings.length > 5 && (
+                            <li>... 还有 {validationResult.warnings.length - 5} 个警告</li>
+                          )}
+                        </ul>
+                      }
+                    />
+                  </div>
+                )}
+              </Space>
+            </div>
+            
+            {validationResult.sampleData.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <h4>数据预览（前3行）</h4>
+                <Table
+                  dataSource={validationResult.sampleData}
+                  columns={[
+                    { title: '姓名', dataIndex: 'name', width: 80 },
+                    { title: '手机号', dataIndex: 'phone', width: 120 },
+                    { title: '部门', dataIndex: 'department', width: 100 },
+                    { title: '职位', dataIndex: 'position', width: 100 },
+                    { title: '是否管理员', dataIndex: 'isAdmin', width: 80 },
+                    { title: '月度分配', dataIndex: 'monthlyAllocation', width: 80 }
+                  ]}
+                  pagination={false}
+                  size="small"
+                  scroll={{ x: 600 }}
+                />
+              </div>
+            )}
+            
+            {validationResult.isValid && (
+              <div style={{ marginBottom: 16 }}>
+                <h4>导入选项</h4>
+                <Space direction="vertical">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={importOptions.updateExisting}
+                      onChange={(e) => setImportOptions(prev => ({ 
+                        ...prev, 
+                        updateExisting: e.target.checked 
+                      }))}
+                    />
+                    <span style={{ marginLeft: 8 }}>更新已存在的用户</span>
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={importOptions.includeStats}
+                      onChange={(e) => setImportOptions(prev => ({ 
+                        ...prev, 
+                        includeStats: e.target.checked 
+                      }))}
+                    />
+                    <span style={{ marginLeft: 8 }}>包含统计信息</span>
+                  </label>
+                  <div>
+                    <span>默认密码: </span>
+                    <Input
+                      value={importOptions.defaultPassword}
+                      onChange={(e) => setImportOptions(prev => ({ 
+                        ...prev, 
+                        defaultPassword: e.target.value 
+                      }))}
+                      style={{ width: 120 }}
+                      placeholder="默认密码"
+                    />
+                  </div>
+                </Space>
+              </div>
+            )}
+            
+            <div style={{ textAlign: 'right' }}>
+              <Space>
+                <Button onClick={() => {
+                  setImportModalVisible(false)
+                  setValidationResult(null)
+                }}>
+                  取消
+                </Button>
+                {validationResult.isValid && (
+                  <Button 
+                    type="primary" 
+                    loading={importLoading}
+                    onClick={() => {
+                      // 需要获取原始文件进行导入
+                      // 这里需要在验证时保存文件引用
+                      const fileInput = document.querySelector('input[type="file"]')
+                      if (fileInput && fileInput.files[0]) {
+                        handleConfirmImport(fileInput.files[0])
+                      }
+                    }}
+                  >
+                    确认导入
+                  </Button>
+                )}
+              </Space>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   )

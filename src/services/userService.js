@@ -1,4 +1,5 @@
 import { api } from './apiClient'
+import { API_CONFIG } from './config'
 
 // 用户管理相关API服务
 export const userService = {
@@ -213,6 +214,146 @@ export const userService = {
       return response
     } catch (error) {
       console.error('更新头像失败:', error)
+      throw error
+    }
+  },
+
+  /**
+   * 导出用户数据
+   * @param {Object} options - 导出选项
+   * @param {string} options.format - 导出格式 ('csv' | 'json')
+   * @param {boolean} options.includeStats - 是否包含统计信息
+   * @returns {Promise} 导出结果
+   */
+  exportUsers: async (options = {}) => {
+    try {
+      const { format = 'csv', includeStats = false } = options
+      
+      if (format === 'csv') {
+        // CSV格式导出，需要直接使用axios实例来获取blob
+        const axios = require('axios')
+        const token = localStorage.getItem('token')
+        
+        const response = await axios.get(`${API_CONFIG.BASE_URL}/user-data/export`, {
+          params: {
+            format,
+            includeStats: includeStats.toString()
+          },
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          responseType: 'blob'
+        })
+        
+        // 处理CSV文件下载
+        const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8' })
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+        link.download = `users_export_${timestamp}.csv`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+        
+        return { success: true, message: '用户数据导出成功' }
+      } else {
+        // JSON格式导出
+        const response = await api.get('/user-data/export', {
+          format,
+          includeStats: includeStats.toString()
+        })
+        return response
+      }
+    } catch (error) {
+      console.error('导出用户数据失败:', error)
+      throw error
+    }
+  },
+
+  /**
+   * 导入用户数据
+   * @param {File} file - CSV文件
+   * @param {Object} options - 导入选项
+   * @param {boolean} options.updateExisting - 是否更新已存在用户
+   * @param {string} options.defaultPassword - 默认密码
+   * @returns {Promise} 导入结果
+   */
+  importUsers: async (file, options = {}) => {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('updateExisting', options.updateExisting || false)
+      formData.append('defaultPassword', options.defaultPassword || '123456')
+
+      const response = await api.post('/user-data/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      return response
+    } catch (error) {
+      console.error('导入用户数据失败:', error)
+      throw error
+    }
+  },
+
+  /**
+   * 下载导入模板
+   * @returns {Promise} 下载结果
+   */
+  downloadImportTemplate: async () => {
+    try {
+      // 直接使用axios实例来获取blob
+      const axios = require('axios')
+      const token = localStorage.getItem('token')
+      
+      const response = await axios.get(`${API_CONFIG.BASE_URL}/user-data/import-template`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        responseType: 'blob'
+      })
+      
+      // 创建blob URL并下载
+      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'user_import_template.csv'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      
+      return { success: true, message: '模板下载成功' }
+    } catch (error) {
+      console.error('下载导入模板失败:', error)
+      throw error
+    }
+  },
+
+  /**
+   * 验证导入文件
+   * @param {File} file - CSV文件
+   * @returns {Promise} 验证结果
+   */
+  validateImportFile: async (file) => {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await api.post('/user-data/validate-import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      return response
+    } catch (error) {
+      console.error('验证导入文件失败:', error)
       throw error
     }
   }
