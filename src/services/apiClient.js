@@ -134,7 +134,7 @@ export const api = {
   upload: (url, formData, onUploadProgress = null) => {
     return apiClient.post(url, formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        // 不设置Content-Type，让浏览器自动设置multipart/form-data with boundary
       },
       onUploadProgress,
     })

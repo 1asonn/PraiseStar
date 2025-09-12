@@ -65,9 +65,9 @@ const AdminUsers = () => {
   const [importLoading, setImportLoading] = useState(false)
   const [importModalVisible, setImportModalVisible] = useState(false)
   const [importOptions, setImportOptions] = useState({
-    updateExisting: false,
+    updateExisting: true,
     defaultPassword: '123456',
-    includeStats: false
+    includeStats: true
   })
   const [validationResult, setValidationResult] = useState(null)
   const [pendingFile, setPendingFile] = useState(null)
@@ -442,7 +442,7 @@ const AdminUsers = () => {
   }
 
   // 导出数据
-  const handleExport = async (format = 'csv', includeStats = false) => {
+  const handleExport = async (format = 'csv', includeStats = true) => {
     try {
       setExportLoading(true)
       const response = await userService.exportUsers({ format, includeStats })

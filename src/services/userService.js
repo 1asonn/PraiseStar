@@ -228,7 +228,7 @@ export const userService = {
    */
   exportUsers: async (options = {}) => {
     try {
-      const { format = 'csv', includeStats = false } = options
+      const { format = 'csv', includeStats = true } = options
       
       if (format === 'csv') {
         // CSV格式导出，需要直接使用axios实例来获取blob
@@ -238,7 +238,7 @@ export const userService = {
         const response = await axios.get(`${API_CONFIG.BASE_URL}/user-data/export`, {
           params: {
             format,
-            includeStats: includeStats.toString()
+            includeStats: includeStats
           },
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -264,7 +264,7 @@ export const userService = {
         // JSON格式导出
         const response = await api.get('/user-data/export', {
           format,
-          includeStats: includeStats.toString()
+          includeStats: includeStats
         })
         return response
       }
@@ -289,12 +289,16 @@ export const userService = {
       formData.append('updateExisting', options.updateExisting || false)
       formData.append('defaultPassword', options.defaultPassword || '123456')
 
-      const response = await api.post('/user-data/import', formData, {
+      // 直接使用axios实例，不通过api类
+      const token = localStorage.getItem('token')
+      const response = await axios.post(`${API_CONFIG.BASE_URL}/user-data/import`, formData, {
         headers: {
+          'Authorization': `Bearer ${token}`,
           // 不设置Content-Type，让浏览器自动设置multipart/form-data with boundary
         }
       })
-      return response
+      
+      return response.data
     } catch (error) {
       console.error('导入用户数据失败:', error)
       throw error
