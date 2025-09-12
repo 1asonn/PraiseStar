@@ -4,6 +4,7 @@
 export const API_CONFIG = {
   // 基础URL - 根据环境自动切换
   BASE_URL: 'http://39.105.117.48:3000/api',     // 生产API地址
+  // BASE_URL: 'http://localhost:3000/api',     // 开发API地址
   
   // 请求超时时间（毫秒）
   TIMEOUT: 10000,

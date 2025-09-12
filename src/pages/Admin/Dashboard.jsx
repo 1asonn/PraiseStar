@@ -161,6 +161,87 @@ const AdminDashboard = () => {
 
   return (
     <div>
+      <style>{`
+        /* 移动端样式优化 */
+        @media (max-width: 768px) {
+          :global(.ant-card-body) {
+            padding: 12px !important;
+          }
+          
+          :global(.ant-statistic-title) {
+            font-size: 12px !important;
+            margin-bottom: 4px !important;
+          }
+          
+          :global(.ant-statistic-content) {
+            font-size: 18px !important;
+          }
+          
+          :global(.ant-statistic-content-value) {
+            font-size: 18px !important;
+          }
+          
+          :global(.ant-statistic-content-suffix) {
+            font-size: 14px !important;
+          }
+          
+          :global(.ant-progress-text) {
+            font-size: 12px !important;
+          }
+          
+          :global(.ant-table) {
+            font-size: 12px;
+          }
+          
+          :global(.ant-table-thead > tr > th) {
+            padding: 8px 4px !important;
+            font-size: 12px !important;
+          }
+          
+          :global(.ant-table-tbody > tr > td) {
+            padding: 8px 4px !important;
+            font-size: 12px !important;
+          }
+          
+          :global(.ant-list-item-meta-avatar) {
+            margin-right: 12px !important;
+          }
+          
+          :global(.ant-avatar) {
+            width: 36px !important;
+            height: 36px !important;
+          }
+          
+          :global(.ant-list-item-meta-title) {
+            font-size: 14px !important;
+            margin-bottom: 4px !important;
+          }
+          
+          :global(.ant-list-item-meta-description) {
+            font-size: 12px !important;
+          }
+        }
+        
+        /* 超小屏幕优化 */
+        @media (max-width: 480px) {
+          :global(.ant-card-body) {
+            padding: 8px !important;
+          }
+          
+          :global(.ant-statistic-content) {
+            font-size: 16px !important;
+          }
+          
+          :global(.ant-statistic-content-value) {
+            font-size: 16px !important;
+          }
+          
+          :global(.ant-statistic-title) {
+            font-size: 11px !important;
+          }
+        }
+      `}</style>
+      
       {loading && (
         <div style={{ 
           display: 'flex', 
@@ -174,9 +255,9 @@ const AdminDashboard = () => {
             {!loading && (
         <>
           {/* 系统总览统计 */}
-          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
         <Col xs={12} sm={6}>
-          <Card className="card-shadow">
+          <Card className="card-shadow" style={{ height: '100%' }}>
             <Statistic
               title="总用户数"
               value={stats.overview.total_users}
@@ -187,36 +268,33 @@ const AdminDashboard = () => {
         </Col>
         
         <Col xs={12} sm={6}>
-          <Card className="card-shadow">
+          <Card className="card-shadow" style={{ height: '100%' }}>
             <Statistic
               title="本月已分配"
               value={stats.overview.monthly_allocated}
               prefix={<StarOutlined style={{ color: '#52c41a' }} />}
-              suffix="⭐"
               valueStyle={{ color: '#52c41a' }}
             />
           </Card>
         </Col>
         
         <Col xs={12} sm={6}>
-          <Card className="card-shadow">
+          <Card className="card-shadow" style={{ height: '100%' }}>
             <Statistic
               title="本月已赠送"
               value={stats.overview.monthly_given}
               prefix={<SendOutlined style={{ color: '#fa8c16' }} />}
-              suffix="⭐"
               valueStyle={{ color: '#fa8c16' }}
             />
           </Card>
         </Col>
         
         <Col xs={12} sm={6}>
-          <Card className="card-shadow">
+          <Card className="card-shadow" style={{ height: '100%' }}>
             <Statistic
               title="剩余未使用"
               value={stats.overview.remaining_unused}
               prefix={<StarOutlined style={{ color: '#eb2f96' }} />}
-              suffix="⭐"
               valueStyle={{ color: '#eb2f96' }}
             />
           </Card>
@@ -224,10 +302,10 @@ const AdminDashboard = () => {
       </Row>
 
       {/* 活跃度统计 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
         <Col xs={24} lg={12}>
           <Card title="本月活跃度统计" className="card-shadow">
-            <Row gutter={[16, 16]}>
+            <Row gutter={[8, 8]}>
               <Col span={12}>
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: 24, fontWeight: 'bold', color: '#52c41a', marginBottom: 8 }}>
@@ -283,7 +361,7 @@ const AdminDashboard = () => {
       </Row>
 
       {/* 部门统计表格 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
         <Col span={24}>
           <Card title="部门活跃度统计" className="card-shadow">
             <Table
@@ -297,7 +375,7 @@ const AdminDashboard = () => {
         </Col>
       </Row>
 
-      <Row gutter={[16, 16]}>
+      <Row gutter={[8, 8]}>
         {/* 排行榜前5 */}
         <Col xs={24} lg={12}>
           <Card title="年度排行榜 TOP5" className="card-shadow">
@@ -370,7 +448,7 @@ const AdminDashboard = () => {
       </Row>
 
       {/* 最近兑换记录 */}
-      <Row style={{ marginTop: 16 }}>
+      <Row style={{ marginTop: 8 }}>
         <Col span={24}>
           <Card title="最近兑换记录" className="card-shadow">
             <List
