@@ -79,6 +79,36 @@ export const userApi = {
     } catch (error) {
       return { success: false, message: error.message || '调整用户赞赞星失败' }
     }
+  },
+
+  // 获取部门列表
+  getDepartments: async () => {
+    try {
+      const response = await userService.getDepartments()
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '获取部门列表失败' }
+    }
+  },
+
+  // 修改用户密码
+  changePassword: async (passwordData) => {
+    try {
+      const response = await userService.changePassword(passwordData)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '修改密码失败' }
+    }
+  },
+
+  // 更新用户个人信息
+  updateProfile: async (profileData) => {
+    try {
+      const response = await userService.updateProfile(profileData)
+      return response
+    } catch (error) {
+      return { success: false, message: error.message || '更新个人信息失败' }
+    }
   }
 }
 

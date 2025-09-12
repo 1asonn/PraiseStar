@@ -505,11 +505,13 @@ const Ranking = () => {
             <div style={{ marginTop: 8, fontSize: isMobile ? 11 : 12, color: '#666' }}>
               本月获赞 {myRanking.month?.received_stars || 0} ⭐
             </div>
-            {myRanking.month?.monthly_highlights && (
-              <div style={{ marginTop: 4, fontSize: isMobile ? 10 : 11, color: '#52c41a' }}>
-                比上月 {myRanking.month.monthly_highlights.growth_percentage > 0 ? '增长' : '下降'} {Math.abs(myRanking.month.monthly_highlights.growth_percentage)}%
-              </div>
-            )}
+            <div style={{ marginTop: 4, fontSize: isMobile ? 10 : 11, color: '#52c41a', minHeight: isMobile ? 12 : 14 }}>
+              {myRanking.month?.monthly_highlights ? (
+                `比上月 ${myRanking.month.monthly_highlights.growth_percentage > 0 ? '增长' : '下降'} ${Math.abs(myRanking.month.monthly_highlights.growth_percentage)}%`
+              ) : (
+                <span style={{ opacity: 0 }}>占位</span>
+              )}
+            </div>
           </Card>
         </Col>
         
@@ -525,6 +527,13 @@ const Ranking = () => {
             <div style={{ marginTop: 8, fontSize: isMobile ? 11 : 12, color: '#666' }}>
               本季度获赞 {myRanking.quarter?.received_stars || 0} ⭐
             </div>
+            <div style={{ marginTop: 4, fontSize: isMobile ? 10 : 11, color: '#52c41a', minHeight: isMobile ? 12 : 14 }}>
+              {myRanking.quarter?.quarterly_highlights ? (
+                `比上季度 ${myRanking.quarter.quarterly_highlights.growth_percentage > 0 ? '增长' : '下降'} ${Math.abs(myRanking.quarter.quarterly_highlights.growth_percentage)}%`
+              ) : (
+                <span style={{ opacity: 0 }}>占位</span>
+              )}
+            </div>
           </Card>
         </Col>
         
@@ -539,6 +548,13 @@ const Ranking = () => {
             />
             <div style={{ marginTop: 8, fontSize: isMobile ? 11 : 12, color: '#666' }}>
               年度获赞 {myRanking.year?.received_stars || 0} ⭐
+            </div>
+            <div style={{ marginTop: 4, fontSize: isMobile ? 10 : 11, color: '#52c41a', minHeight: isMobile ? 12 : 14 }}>
+              {myRanking.year?.yearly_highlights ? (
+                `比去年 ${myRanking.year.yearly_highlights.growth_percentage > 0 ? '增长' : '下降'} ${Math.abs(myRanking.year.yearly_highlights.growth_percentage)}%`
+              ) : (
+                <span style={{ opacity: 0 }}>占位</span>
+              )}
             </div>
           </Card>
         </Col>

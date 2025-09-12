@@ -25,6 +25,7 @@ import {
   SwapOutlined
 } from '@ant-design/icons'
 import { useAuth } from '../contexts/AuthContext'
+import ProfileModal from './ProfileModal'
 
 const { Header, Sider, Content } = AntLayout
 
@@ -32,6 +33,7 @@ const Layout = ({ userType }) => {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileMenuVisible, setMobileMenuVisible] = useState(false)
   const [currentView, setCurrentView] = useState(userType) // 当前视图状态
+  const [profileModalVisible, setProfileModalVisible] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuth()
@@ -130,10 +132,18 @@ const Layout = ({ userType }) => {
     {
       key: 'logout',
       icon: <LogoutOutlined />,
-      label: '退出登录',
-      onClick: handleLogout
+      label: '退出登录'
     }
   ]
+
+  // 处理用户下拉菜单点击
+  const handleUserMenuClick = ({ key }) => {
+    if (key === 'profile') {
+      setProfileModalVisible(true)
+    } else if (key === 'logout') {
+      handleLogout()
+    }
+  }
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
 
@@ -197,7 +207,7 @@ const Layout = ({ userType }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'white',
+            color: 'black',
             fontWeight: 'bold'
           }}>
             {collapsed ? '⭐' : '⭐ 赞赞星'}
@@ -208,7 +218,7 @@ const Layout = ({ userType }) => {
 
       {/* 移动端抽屉菜单 */}
       <Drawer
-        title="⭐ ThumbStar"
+        title="⭐ 赞赞星"
         placement="left"
         onClose={() => setMobileMenuVisible(false)}
         open={mobileMenuVisible}
@@ -259,14 +269,14 @@ const Layout = ({ userType }) => {
               fontWeight: 'bold',
               lineHeight: 1.2
             }}>
-              {currentView === 'admin' ? 'ThumbStar Admin' : 'ThumbStar'}
+              {currentView === 'admin' ? '赞赞星后台管理' : '赞赞星'}
             </h2>
             {currentView !== 'admin' && (
               <div style={{
                 fontSize: isMobile ? 10 : 12,
                 color: '#666',
                 marginTop: 2,
-                lineHeight: 1.2,
+                lineHeight: 1.4,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis'
@@ -298,11 +308,7 @@ const Layout = ({ userType }) => {
             <Dropdown
               menu={{
                 items: userDropdownItems,
-                onClick: ({ key }) => {
-                  if (key === 'logout') {
-                    handleLogout()
-                  }
-                }
+                onClick: handleUserMenuClick
               }}
               placement="bottomRight"
             >
@@ -339,6 +345,12 @@ const Layout = ({ userType }) => {
           <Outlet />
         </Content>
       </AntLayout>
+
+      {/* 个人信息弹窗 */}
+      <ProfileModal
+        visible={profileModalVisible}
+        onCancel={() => setProfileModalVisible(false)}
+      />
     </AntLayout>
   )
 }

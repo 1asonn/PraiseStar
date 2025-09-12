@@ -385,6 +385,41 @@ export const userService = {
       console.error('获取统计数据失败:', error)
       throw error
     }
+  },
+
+  /**
+   * 修改用户密码
+   * @param {Object} passwordData - 密码数据
+   * @param {string} passwordData.oldPassword - 旧密码
+   * @param {string} passwordData.newPassword - 新密码
+   * @returns {Promise} 修改结果
+   */
+  changePassword: async (passwordData) => {
+    try {
+      const response = await api.post('/users/change-password', passwordData)
+      return response
+    } catch (error) {
+      console.error('修改密码失败:', error)
+      throw error
+    }
+  },
+
+  /**
+   * 更新用户个人信息（手机号和密码）
+   * @param {Object} profileData - 个人信息数据
+   * @param {string} profileData.phone - 新手机号（可选）
+   * @param {string} profileData.password - 新密码（可选）
+   * @param {string} profileData.currentPassword - 当前密码（修改时必需）
+   * @returns {Promise} 更新结果
+   */
+  updateProfile: async (profileData) => {
+    try {
+      const response = await api.put('/users/profile', profileData)
+      return response
+    } catch (error) {
+      console.error('更新个人信息失败:', error)
+      throw error
+    }
   }
 }
 

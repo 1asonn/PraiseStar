@@ -58,9 +58,7 @@ const AdminUsers = () => {
   const [total, setTotal] = useState(0)
   const [pageSize] = useState(10)
   const [tableLoading, setTableLoading] = useState(false)
-  const [allDepartments] = useState([
-    '研发中心', '市场部', '人力行政部', '总经理办', '财务部'
-  ])
+  const [allDepartments, setAllDepartments] = useState([])
   
   // 导入导出相关状态
   const [exportLoading, setExportLoading] = useState(false)
@@ -78,7 +76,7 @@ const AdminUsers = () => {
   
   const [form] = Form.useForm()
   const [adjustForm] = Form.useForm()
-  const { getAllUsers,updateUser,addUser } = userApi
+  const { getAllUsers, updateUser, addUser, getDepartments } = userApi
   const listRef = useRef(null)
 
   // 检测移动端
@@ -160,6 +158,7 @@ const AdminUsers = () => {
   useEffect(() => {
     loadUsers()
     fetchStatistics()
+    fetchDepartments()
   }, [])
 
   // 懒加载更多数据
@@ -485,6 +484,24 @@ const AdminUsers = () => {
       message.error('获取统计数据失败')
     } finally {
       setStatisticsLoading(false)
+    }
+  }
+
+  // 获取部门列表
+  const fetchDepartments = async () => {
+    try {
+      const response = await getDepartments()
+      if (response.success) {
+        setAllDepartments(response.data.departments || [])
+      } else {
+        console.error('获取部门列表失败:', response.message)
+        // 如果API失败，使用默认部门列表作为后备
+        setAllDepartments(['研发中心', '市场部', '人力行政部', '总经理办', '财务部'])
+      }
+    } catch (error) {
+      console.error('获取部门列表失败:', error)
+      // 如果API失败，使用默认部门列表作为后备
+      setAllDepartments(['研发中心', '市场部', '人力行政部', '总经理办', '财务部'])
     }
   }
 
@@ -957,9 +974,14 @@ const AdminUsers = () => {
                 value={searchDepartment}
                 onChange={setSearchDepartment}
                 allowClear
-                style={{ width: '100%' }}
+                style={{ width: '100%', minWidth: '120px' }}
+                loading={allDepartments.length === 0}
+                showSearch
+                filterOption={(input, option) =>
+                  (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                }
               >
-                {/* 使用固定部门列表 */}
+                {/* 使用动态获取的部门列表 */}
                 {allDepartments.map(dept => (
                   <Option key={dept} value={dept}>{dept}</Option>
                 ))}
@@ -1103,12 +1125,19 @@ const AdminUsers = () => {
                  name="department"
                  rules={[{ required: true, message: '请选择部门' }]}
                >
-                 <Select placeholder="请选择部门">
-                   <Option value="研发中心">研发中心</Option>
-                   <Option value="市场部">市场部</Option>
-                   <Option value="人力行政部">人力行政部</Option>
-                   <Option value="总经理办">总经理办</Option>
-                   <Option value="财务部">财务部</Option>
+                 <Select 
+                   placeholder="请选择部门"
+                   loading={allDepartments.length === 0}
+                   style={{ width: '100%', minWidth: '120px' }}
+                   showSearch
+                   filterOption={(input, option) =>
+                     (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                   }
+                 >
+                   {/* 使用动态获取的部门列表 */}
+                   {allDepartments.map(dept => (
+                     <Option key={dept} value={dept}>{dept}</Option>
+                   ))}
                  </Select>
                </Form.Item>
              </Col>

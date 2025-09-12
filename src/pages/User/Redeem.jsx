@@ -252,7 +252,7 @@ const Redeem = () => {
                           fontSize: 12, 
                           color: '#666', 
                           marginBottom: 8,
-                          height: 32,
+
                           overflow: 'hidden',
                           display: '-webkit-box',
                           WebkitLineClamp: 2,

@@ -100,7 +100,7 @@ const LoginPage = () => {
 
                     {/* 登录表单 */}
                     <div className={styles.LoginFormBox}>
-                    <h1>⭐ ThumbStar Login</h1>
+                    <h1>⭐ 赞赞星 Login</h1>
                     <form className={styles.form} onSubmit={handleLogin}>
                         <div className={styles.inputBox}>
                             <input 
@@ -183,8 +183,8 @@ const LoginPage = () => {
                             textAlign: 'center',
                             fontWeight: 'bold'
                         }}>
-                            Registration is not available yet
-                            Please contact the administrator to register
+                            注册功能暂未开放
+                            请联系管理员进行注册
                         </div>
                     </div> 
 
