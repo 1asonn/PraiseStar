@@ -21,7 +21,7 @@ const LoginPage = () => {
         // 应用安全底部样式
         useEffect(() => {
             if (containerRef.current) {
-                const cleanup = AddSafeBottom(FormRef.current, 65); // 65px是底部偏移量
+                const cleanup = AddSafeBottom(FormRef.current, 0); // 底部偏移量
                 return cleanup; // 组件卸载时清理
             }
         }, []);
