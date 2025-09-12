@@ -73,6 +73,7 @@ const AdminUsers = () => {
   const [pendingFile, setPendingFile] = useState(null)
   const [statistics, setStatistics] = useState(null)
   const [statisticsLoading, setStatisticsLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   
   const [form] = Form.useForm()
   const [adjustForm] = Form.useForm()
@@ -167,6 +168,22 @@ const AdminUsers = () => {
     
     setLoading(true)
     loadUsers(page + 1)
+  }
+
+  // 下拉刷新
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true)
+      setPage(1)
+      setDisplayedUsers([])
+      setHasMore(true)
+      await loadUsers(1, searchName, searchDepartment)
+      message.success('刷新成功')
+    } catch (error) {
+      message.error('刷新失败')
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   // 搜索处理
@@ -628,6 +645,25 @@ const AdminUsers = () => {
                 border: '1px solid #f0f0f0'
               }}>
                 <div style={{ fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>
+                  本月分配
+                </div>
+                <div style={{ 
+                  fontSize: '16px', 
+                  fontWeight: 'bold', 
+                  color: '#52c41a'
+                }}>
+                  {user.monthlyAllocation} ⭐
+                </div>
+              </div>
+            </Col>
+            <Col span={12}>
+              <div style={{ 
+                backgroundColor: '#fff',
+                padding: '12px',
+                borderRadius: '6px',
+                border: '1px solid #f0f0f0'
+              }}>
+                <div style={{ fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>
                   本月可赠送
                 </div>
                 <div style={{ 
@@ -753,6 +789,14 @@ const AdminUsers = () => {
       dataIndex: 'position',
       key: 'position',
       width: 120
+    },
+    {
+      title: '本月分配',
+      dataIndex: 'monthlyAllocation',
+      key: 'monthlyAllocation',
+      width: 100,
+      align: 'center',
+      render: (value) => <span style={{ color: '#52c41a' }}>{value} ⭐</span>
     },
     {
       title: '本月可赠送',
@@ -1000,58 +1044,108 @@ const AdminUsers = () => {
           </Row>
         </div>
                    {isMobile ? (
-            // 移动端列表视图 - 懒加载
-            <div 
-              ref={listRef}
-              style={{ 
-                height: 'calc(100vh - 300px)', 
-                overflowY: 'auto',
-                padding: '8px'
-              }}
-            >
-              <List
-                dataSource={displayedUsers}
-                renderItem={renderMobileUserItem}
-                size="small"
-                locale={{
-                  emptyText: (
-                    <div style={{ 
-                      textAlign: 'center', 
-                      padding: '40px 20px',
-                      color: '#8c8c8c'
-                    }}>
-                      <div style={{ fontSize: '16px', marginBottom: '8px' }}>
-                        暂无用户数据
-                      </div>
-                      <div style={{ fontSize: '14px' }}>
-                        点击上方"添加"按钮创建新用户
-                      </div>
-                    </div>
-                  )
-                }}
-              />
-              {loading && (
-                <div style={{ 
-                  textAlign: 'center', 
-                  padding: '20px',
-                  color: '#8c8c8c'
+            // 移动端列表视图 - 下拉刷新 + 懒加载
+            <div style={{ 
+              height: 'calc(100vh - 300px)', 
+              overflow: 'hidden',
+              position: 'relative'
+            }}>
+              {/* 下拉刷新指示器 */}
+              {refreshing && (
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: '50px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#f0f0f0',
+                  zIndex: 1000,
+                  borderBottom: '1px solid #d9d9d9'
                 }}>
                   <Spin size="small" />
-                  <div style={{ marginTop: '8px', fontSize: '14px' }}>
-                    加载中...
+                  <span style={{ marginLeft: '8px', fontSize: '14px', color: '#666' }}>
+                    刷新中...
+                  </span>
+                </div>
+              )}
+              
+              <div 
+                ref={listRef}
+                style={{ 
+                  height: '100%', 
+                  overflowY: 'auto',
+                  padding: '8px',
+                  paddingTop: refreshing ? '58px' : '8px',
+                  transition: 'padding-top 0.3s ease'
+                }}
+              >
+                <List
+                  dataSource={displayedUsers}
+                  renderItem={renderMobileUserItem}
+                  size="small"
+                  locale={{
+                    emptyText: (
+                      <div style={{ 
+                        textAlign: 'center', 
+                        padding: '40px 20px',
+                        color: '#8c8c8c'
+                      }}>
+                        <div style={{ fontSize: '16px', marginBottom: '8px' }}>
+                          暂无用户数据
+                        </div>
+                        <div style={{ fontSize: '14px' }}>
+                          点击上方"添加"按钮创建新用户
+                        </div>
+                      </div>
+                    )
+                  }}
+                />
+                {loading && displayedUsers.length > 0 && (
+                  <div style={{ 
+                    textAlign: 'center', 
+                    padding: '20px',
+                    color: '#8c8c8c'
+                  }}>
+                    <Spin size="small" />
+                    <div style={{ marginTop: '8px', fontSize: '14px' }}>
+                      加载更多...
+                    </div>
                   </div>
-                </div>
-              )}
-              {!hasMore && displayedUsers.length > 0 && (
-                <div style={{ 
-                  textAlign: 'center', 
-                  padding: '20px',
-                  color: '#8c8c8c',
-                  fontSize: '14px'
-                }}>
-                  已加载全部数据
-                </div>
-              )}
+                )}
+                {!hasMore && displayedUsers.length > 0 && (
+                  <div style={{ 
+                    textAlign: 'center', 
+                    padding: '20px',
+                    color: '#8c8c8c',
+                    fontSize: '14px'
+                  }}>
+                    已加载全部数据
+                  </div>
+                )}
+              </div>
+              
+              {/* 刷新按钮 */}
+              <Button
+                type="primary"
+                icon={<ReloadOutlined />}
+                onClick={handleRefresh}
+                loading={refreshing}
+                style={{
+                  position: 'absolute',
+                  top: '10px',
+                  right: '10px',
+                  zIndex: 1001,
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  minWidth: '40px',
+                  padding: 0,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                }}
+              />
             </div>
           ) : (
            // 桌面端表格视图
@@ -1059,7 +1153,7 @@ const AdminUsers = () => {
              columns={columns}
              dataSource={users}
              rowKey="id"
-             scroll={{ x: 1400 }}
+             scroll={{ x: 1500 }}
              loading={tableLoading}
              pagination={{
                total: total,
