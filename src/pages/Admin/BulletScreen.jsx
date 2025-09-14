@@ -493,7 +493,7 @@ const AdminBulletScreen = () => {
         footer={null}
         width={isMobile ? '95%' : 600}
         style={isMobile ? { top: 20 } : {}}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           form={configForm}

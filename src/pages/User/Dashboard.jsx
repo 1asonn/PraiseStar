@@ -6,12 +6,29 @@ import {
   GiftOutlined,
   TrophyOutlined,
   RiseOutlined,
-  ReloadOutlined
+  ReloadOutlined,
+  HeartOutlined,
+  LikeOutlined,
+  CalendarOutlined
 } from '@ant-design/icons'
 import { useAuth } from '../../contexts/AuthContext'
 import { starsService } from '../../services/starsService'
 import { rankingsService } from '../../services/rankingsService'
 import { userService } from '../../services/userService'
+
+// 立体星星组件
+const StarIcon = ({ color = '#722ed1', size = '16px' }) => (
+  <span style={{
+    display: 'inline-block',
+    fontSize: size,
+    filter: `drop-shadow(0 2px 4px ${color}40)`,
+    textShadow: `0 1px 3px ${color}60, 0 0 6px ${color}40`,
+    transform: 'perspective(100px) rotateX(10deg)',
+    fontWeight: 'bold'
+  }}>
+    ⭐
+  </span>
+)
 
 const Dashboard = () => {
   const { user, updateUser } = useAuth()
@@ -167,11 +184,54 @@ const Dashboard = () => {
 
   // 获取显示理由
   const getDisplayReason = (item) => {
-    if (item.reason === '其他' && item.custom_reason) {
-      return item.custom_reason
+    // 新的数据结构：reason是对象，包含keyword和reason
+    if (item.reason && typeof item.reason === 'object') {
+      const { keyword, reason } = item.reason
+      if (keyword && reason) {
+        return (
+          <div>
+            <span style={{ 
+              color: '#1890ff', 
+              fontWeight: 'bold',
+              fontSize: '12px',
+              backgroundColor: '#f0f8ff',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              marginRight: '6px'
+            }}>
+              {keyword}
+            </span>
+            <span style={{ color: '#333', fontSize: '12px' }}>
+              {reason}
+            </span>
+          </div>
+        )
+      } else if (keyword) {
+        return (
+          <span style={{ 
+            color: '#1890ff', 
+            fontWeight: 'bold',
+            fontSize: '12px',
+            backgroundColor: '#f0f8ff',
+            padding: '2px 6px',
+            borderRadius: '4px'
+          }}>
+            {keyword}
+          </span>
+        )
+      } else if (reason) {
+        return <span style={{ color: '#333', fontSize: '12px' }}>{reason}</span>
+      }
     }
-    return item.reason || '无理由'
+    
+    // 兼容旧数据结构
+    if (item.reason === '其他' && item.custom_reason) {
+      return <span style={{ color: '#333', fontSize: '12px' }}>{item.custom_reason}</span>
+    }
+    
+    return <span style={{ color: '#999', fontSize: '12px' }}>{typeof item.reason === 'string' ? item.reason : '无理由'}</span>
   }
+
 
   if (loading) {
     return (
@@ -213,43 +273,55 @@ const Dashboard = () => {
 
       <Row gutter={[16, 16]}>
         {/* 个人赞赞星统计卡片 */}
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} md={8} lg={4}>
           <Card className="card-shadow">
             <Statistic
               title="本月可赠送"
               value={currentUser.availableToGive}
               prefix={<SendOutlined style={{ color: '#52c41a' }} />}
-              suffix="⭐"
+              suffix={<StarIcon color="#52c41a" />}
               valueStyle={{ color: '#52c41a' }}
             />
           </Card>
         </Col>
         
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} md={8} lg={4}>
+          <Card className="card-shadow">
+            <Statistic
+              title="本月获赠"
+              value={currentUser?.receivedThisMonth|| 0}
+              prefix={<CalendarOutlined style={{ color: '#722ed1' }} />}
+              suffix={<StarIcon color="#722ed1" />}
+              valueStyle={{ color: '#722ed1' }}
+            />
+          </Card>
+        </Col>
+        
+        <Col xs={24} sm={12} md={8} lg={4}>
           <Card className="card-shadow">
             <Statistic
               title="累计获赠"
               value={currentUser.receivedThisYear}
-              prefix={<StarOutlined style={{ color: '#1890ff' }} />}
-              suffix="⭐"
+              prefix={<LikeOutlined style={{ color: '#1890ff' }} />}
+              suffix={<StarIcon color="#1890ff" />}
               valueStyle={{ color: '#1890ff' }}
             />
           </Card>
         </Col>
         
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} md={8} lg={4}>
           <Card className="card-shadow">
             <Statistic
               title="可兑换余额"
               value={currentUser.availableToRedeem}
               prefix={<GiftOutlined style={{ color: '#fa8c16' }} />}
-              suffix="⭐"
+              suffix={<StarIcon color="#fa8c16" />}
               valueStyle={{ color: '#fa8c16' }}
             />
           </Card>
         </Col>
         
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} md={8} lg={4}>
           <Card className="card-shadow">
             <Statistic
               title="当前排名"
@@ -269,15 +341,15 @@ const Dashboard = () => {
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span>已赠送</span>
-                <span>{currentUser.monthlyAllocation - currentUser.availableToGive} ⭐</span>
+                <span>{currentUser.monthlyAllocation - currentUser.availableToGive} <StarIcon color="#52c41a" size="14px" /></span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span>可赠送</span>
-                <span>{currentUser.availableToGive} ⭐</span>
+                <span>{currentUser.availableToGive} <StarIcon color="#52c41a" size="14px" /></span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12, color: '#666' }}>
                 <span>月度配额</span>
-                <span>{currentUser.monthlyAllocation} ⭐</span>
+                <span>{currentUser.monthlyAllocation} <StarIcon color="#52c41a" size="14px" /></span>
               </div>
               <Progress 
                 percent={giveProgress} 
@@ -300,15 +372,15 @@ const Dashboard = () => {
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span>已兑换</span>
-                <span>{currentUser.redeemedThisYear} ⭐</span>
+                <span>{currentUser.redeemedThisYear} <StarIcon color="#fa8c16" size="14px" /></span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span>可兑换</span>
-                <span>{currentUser.availableToRedeem} ⭐</span>
+                <span>{currentUser.availableToRedeem} <StarIcon color="#fa8c16" size="14px" /></span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12, color: '#666' }}>
                 <span>年度总计</span>
-                <span>{totalReceivedThisYear} ⭐</span>
+                <span>{totalReceivedThisYear} <StarIcon color="#fa8c16" size="14px" /></span>
               </div>
               <Progress 
                 percent={redeemProgress} 
@@ -355,7 +427,7 @@ const Dashboard = () => {
                           {item.from_user_name || '未知用户'}
                         </span>
                         <Tag color="blue" style={{ margin: 0 }}>
-                          +{item.stars}⭐
+                          +{item.stars}<StarIcon color="#1890ff" size="12px" />
                         </Tag>
                       </div>
                     }
@@ -413,7 +485,7 @@ const Dashboard = () => {
                           赠送给 {item.to_user_name || '未知用户'}
                         </span>
                         <Tag color="green" style={{ margin: 0 }}>
-                          -{item.stars}⭐
+                          -{item.stars}<StarIcon color="#52c41a" size="12px" />
                         </Tag>
                       </div>
                     }
@@ -453,7 +525,7 @@ const Dashboard = () => {
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <RiseOutlined style={{ fontSize: 32, color: '#52c41a', marginBottom: 8 }} />
                   <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 4 }}>
-                    本月获赠 {monthlyHighlights?.received_this_month || 0} ⭐
+                    本月获赠 {monthlyHighlights?.received_this_month || 0} <StarIcon color="#52c41a" size="16px" />
                   </div>
                   <div style={{ color: '#666' }}>
                     {monthlyHighlights?.growth_percentage > 0 ? (
@@ -493,13 +565,17 @@ const Dashboard = () => {
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <StarOutlined style={{ fontSize: 32, color: '#1890ff', marginBottom: 8 }} />
                   <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 4 }}>
-                    活跃指数 {monthlyHighlights?.activity_index || 0}%
+                    获赠词条最多
                   </div>
                   <div style={{ color: '#666' }}>
-                    {monthlyHighlights?.is_team_contributor ? (
-                      <span style={{ color: '#52c41a' }}>团队氛围贡献者</span>
+                    {monthlyHighlights?.top_reason ? (
+                      <div>
+                        <div style={{ fontSize: 16, fontWeight: 'bold', color: '#1890ff', marginBottom: 4 }}>
+                          {monthlyHighlights.top_reason.reason?.keyword || monthlyHighlights.top_reason.reason?.reason || '无词条'}
+                        </div>
+                      </div>
                     ) : (
-                      <span style={{ color: '#666' }}>积极参与团队活动</span>
+                      <span style={{ color: '#666' }}>暂无数据</span>
                     )}
                   </div>
                 </div>
@@ -520,7 +596,7 @@ const Dashboard = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ color: '#666' }}>上月获赠星数：</span>
                       <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
-                        {monthlyHighlights.last_month_stars} ⭐
+                        {monthlyHighlights.last_month_stars} <StarIcon color="#1890ff" size="14px" />
                       </span>
                     </div>
                   </Col>
@@ -539,7 +615,7 @@ const Dashboard = () => {
         </Col>
       </Row>
       
-      <style jsx>{`
+      <style jsx="true">{`
         :global(.card-shadow) {
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
           border-radius: 8px;
@@ -590,6 +666,7 @@ const Dashboard = () => {
           border-radius: 6px;
           transition: background-color 0.3s ease;
         }
+        
       `}</style>
     </div>
   )

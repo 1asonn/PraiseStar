@@ -625,7 +625,7 @@ const Ranking = () => {
         </div>
       </Card>
 
-      <style jsx>{`
+      <style jsx="true">{`
         :global(.user-row) {
           background-color: #e6f7ff !important;
         }

@@ -23,11 +23,28 @@ import {
   EnvironmentOutlined,
   PhoneOutlined,
   UserOutlined,
-  ReloadOutlined
+  ReloadOutlined,
+  WalletOutlined,
+  TrophyOutlined,
+  RiseOutlined
 } from '@ant-design/icons'
 import { useAuth } from '../../contexts/AuthContext'
 import { giftsService } from '../../services/giftsService'
 import { userService } from '../../services/userService'
+
+// 立体星星组件
+const StarIcon = ({ color = '#722ed1', size = '16px' }) => (
+  <span style={{
+    display: 'inline-block',
+    fontSize: size,
+    filter: `drop-shadow(0 2px 4px ${color}40)`,
+    textShadow: `0 1px 3px ${color}60, 0 0 6px ${color}40`,
+    transform: 'perspective(100px) rotateX(10deg)',
+    fontWeight: 'bold'
+  }}>
+    ⭐
+  </span>
+)
 
 const { TextArea } = Input
 
@@ -133,8 +150,8 @@ const Redeem = () => {
             <Statistic
               title="可兑换余额"
               value={user.availableToRedeem}
-              prefix={<StarOutlined style={{ color: '#1890ff' }} />}
-              suffix="⭐"
+              prefix={<WalletOutlined style={{ color: '#1890ff' }} />}
+              suffix={<StarIcon color="#1890ff" />}
               valueStyle={{ color: '#1890ff' }}
               loading={refreshing}
             />
@@ -146,7 +163,7 @@ const Redeem = () => {
               title="年度已兑换"
               value={user.redeemedThisYear}
               prefix={<GiftOutlined style={{ color: '#52c41a' }} />}
-              suffix="⭐"
+              suffix={<StarIcon color="#52c41a" />}
               valueStyle={{ color: '#52c41a' }}
               loading={refreshing}
             />
@@ -157,8 +174,8 @@ const Redeem = () => {
             <Statistic
               title="年度累计获赠"
               value={user.receivedThisYear}
-              prefix={<StarOutlined style={{ color: '#fa8c16' }} />}
-              suffix="⭐"
+              prefix={<TrophyOutlined style={{ color: '#fa8c16' }} />}
+              suffix={<StarIcon color="#fa8c16" />}
               valueStyle={{ color: '#fa8c16' }}
               loading={refreshing}
             />
@@ -262,7 +279,7 @@ const Redeem = () => {
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Tag color="orange" style={{ margin: 0 }}>
-                            {gift.stars_cost} ⭐
+                            {gift.stars_cost} <StarIcon color="#fa8c16" size="12px" />
                           </Tag>
                           <span style={{ fontSize: 12, color: '#999' }}>
                             库存 {gift.stock}
@@ -304,7 +321,7 @@ const Redeem = () => {
               />
               <h3 style={{ margin: '12px 0 4px' }}>{selectedGift.name}</h3>
               <Tag color="orange" style={{ fontSize: 14 }}>
-                需要 {selectedGift.stars_cost} ⭐
+                需要 {selectedGift.stars_cost} <StarIcon color="#fa8c16" size="14px" />
               </Tag>
             </div>
 
@@ -401,8 +418,8 @@ const Redeem = () => {
                 <h4 style={{ margin: '0 0 8px', color: '#389e0d' }}>兑换确认</h4>
                 <div style={{ fontSize: 12, color: '#666' }}>
                   <div>礼品名称：{selectedGift.name}</div>
-                  <div>消耗赞赞星：{selectedGift.stars_cost} ⭐</div>
-                  <div>兑换后余额：{user.availableToRedeem - selectedGift.stars_cost} ⭐</div>
+                  <div>消耗赞赞星：{selectedGift.stars_cost} <StarIcon color="#fa8c16" size="12px" /></div>
+                  <div>兑换后余额：{user.availableToRedeem - selectedGift.stars_cost} <StarIcon color="#1890ff" size="12px" /></div>
                 </div>
               </div>
 

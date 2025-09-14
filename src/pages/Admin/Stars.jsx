@@ -458,6 +458,56 @@ const AdminStars = () => {
 
   const allocationColumns = isMobile ? mobileAllocationColumns : desktopAllocationColumns
 
+  // 获取显示理由
+  const getDisplayReason = (record) => {
+    // 新的数据结构：reason是对象，包含keyword和reason
+    if (record.reason && typeof record.reason === 'object') {
+      const { keyword, reason } = record.reason
+      if (keyword && reason) {
+        return (
+          <div>
+            <span style={{ 
+              color: '#1890ff', 
+              fontWeight: 'bold',
+              fontSize: '12px',
+              backgroundColor: '#f0f8ff',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              marginRight: '6px'
+            }}>
+              {keyword}
+            </span>
+            <span style={{ color: '#333', fontSize: '12px' }}>
+              {reason}
+            </span>
+          </div>
+        )
+      } else if (keyword) {
+        return (
+          <span style={{ 
+            color: '#1890ff', 
+            fontWeight: 'bold',
+            fontSize: '12px',
+            backgroundColor: '#f0f8ff',
+            padding: '2px 6px',
+            borderRadius: '4px'
+          }}>
+            {keyword}
+          </span>
+        )
+      } else if (reason) {
+        return <span style={{ color: '#333', fontSize: '12px' }}>{reason}</span>
+      }
+    }
+    
+    // 兼容旧数据结构
+    if (record.customReason) {
+      return <span style={{ color: '#333', fontSize: '12px' }}>{record.customReason}</span>
+    }
+    
+    return <span style={{ color: '#999', fontSize: '12px' }}>{typeof record.reason === 'string' ? record.reason : '无理由'}</span>
+  }
+
   // 赠送记录桌面端列定义
   const desktopRecordsColumns = [
     {
@@ -506,11 +556,7 @@ const AdminStars = () => {
     {
       title: '理由',
       key: 'reason',
-      render: (_, record) => (
-        <span>
-          {record.customReason || record.reason}
-        </span>
-      )
+      render: (_, record) => getDisplayReason(record)
     }
   ]
 
@@ -548,14 +594,12 @@ const AdminStars = () => {
           
           {/* 理由 */}
           <div style={{ 
-            fontSize: '12px', 
-            color: '#666',
             backgroundColor: '#f5f5f5',
             padding: '4px 8px',
             borderRadius: '4px',
             marginTop: '6px'
           }}>
-            {record.customReason || record.reason}
+            {getDisplayReason(record)}
           </div>
         </div>
       )
@@ -863,9 +907,9 @@ const AdminStars = () => {
           </Row>
         </TabPane>
 
-        <TabPane tab="赠送理由管理" key="reasons">
+        <TabPane tab="赠送词条管理" key="reasons">
           <Card 
-            title="赠送理由管理"
+            title="赠送词条管理"
             className="card-shadow"
             extra={
               <Button 
@@ -873,7 +917,7 @@ const AdminStars = () => {
                 icon={<PlusOutlined />}
                 onClick={() => handleOpenReasonModal()}
               >
-                添加理由
+                添加词条
               </Button>
             }
           >
@@ -883,7 +927,7 @@ const AdminStars = () => {
               renderItem={(reason) => (
                 <List.Item
                   actions={[
-                    <Tooltip title="编辑理由">
+                    <Tooltip title="编辑词条">
                     <Button
                       type="text"
                       size="small"
@@ -896,12 +940,12 @@ const AdminStars = () => {
                     </Tooltip>,
                     !reason.is_default && (
                       <Popconfirm
-                        title="确定要删除这个理由吗？"
+                        title="确定要删除这个词条吗？"
                         onConfirm={() => handleDeleteReason(reason)}
                         okText="确定"
                         cancelText="取消"
                       >
-                        <Tooltip title="删除理由">
+                        <Tooltip title="删除词条">
                       <Button
                         type="text"
                         danger
@@ -932,8 +976,8 @@ const AdminStars = () => {
                     }
                     description={
                       reason.is_default 
-                        ? '系统默认理由，不可修改或删除' 
-                        : '自定义赠送理由'
+                        ? '系统默认词条，不可修改或删除' 
+                        : '自定义赠送词条'
                     }
                   />
                 </List.Item>
@@ -1124,9 +1168,9 @@ const AdminStars = () => {
         </Form>
       </Modal>
 
-      {/* 添加/编辑理由弹窗 */}
+      {/* 添加/编辑词条弹窗 */}
       <Modal
-        title={editingReason ? '编辑理由' : '添加理由'}
+        title={editingReason ? '编辑词条' : '添加词条'}
         open={reasonModalVisible}
         onCancel={() => {
           setReasonModalVisible(false)
@@ -1141,14 +1185,14 @@ const AdminStars = () => {
           onFinish={handleSaveReason}
         >
           <Form.Item
-            label="理由名称"
+            label="词条名称"
             name="reason"
             rules={[
-              { required: true, message: '请输入理由名称' },
-              { max: 50, message: '理由名称不能超过50个字符' }
+              { required: true, message: '请输入词条名称' },
+              { max: 50, message: '词条名称不能超过50个字符' }
             ]}
           >
-            <Input placeholder="请输入赠送理由" />
+            <Input placeholder="请输入赠送词条" />
           </Form.Item>
 
 

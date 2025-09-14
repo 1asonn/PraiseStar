@@ -149,7 +149,7 @@ const ProfileModal = ({ visible, onCancel }) => {
       onCancel={onCancel}
       footer={null}
       width={600}
-      destroyOnClose
+      destroyOnHidden
     >
       <div style={{ padding: '16px 0' }}>
          {/* 用户基本信息展示 */}

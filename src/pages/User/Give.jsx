@@ -22,7 +22,9 @@ import {
   SendOutlined,
   StarOutlined,
   UserOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  CheckCircleOutlined,
+  GiftOutlined
 } from '@ant-design/icons'
 import { useAuth } from '../../contexts/AuthContext'
 import { giveReasonAPI } from '../../services/apiClient'
@@ -30,6 +32,20 @@ import { starsService } from '../../services/starsService'
 
 const { Option } = Select
 const { TextArea } = Input
+
+// 立体星星组件
+const StarIcon = ({ color = '#722ed1', size = '16px' }) => (
+  <span style={{
+    display: 'inline-block',
+    fontSize: size,
+    filter: `drop-shadow(0 2px 4px ${color}40)`,
+    textShadow: `0 1px 3px ${color}60, 0 0 6px ${color}40`,
+    transform: 'perspective(100px) rotateX(10deg)',
+    fontWeight: 'bold'
+  }}>
+    ⭐
+  </span>
+)
 
 const Give = () => {
   const [form] = Form.useForm()
@@ -39,6 +55,7 @@ const Give = () => {
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [giveReasons, setGiveReasons] = useState([])
   const [loadingReasons, setLoadingReasons] = useState(false)
+  const [formValues, setFormValues] = useState({})
   const { user, refreshUser } = useAuth()
 
   // 获取可用用户列表
@@ -109,6 +126,11 @@ const Give = () => {
     }
   }
 
+  // 监听表单值变化
+  const handleFormValuesChange = (changedValues, allValues) => {
+    setFormValues(allValues)
+  }
+
   const onFinish = async (values) => {
     setLoading(true)
     try {
@@ -118,8 +140,11 @@ const Give = () => {
       const giveData = {
         toUserId: toUserId,
         stars: values.stars,
-        reason: values.reason,
-        customReason: values.reason === '其他' ? values.customReason : null
+        reason: {
+          keyword: values.reasonKeyword,
+          reason: values.reasonText
+        },
+        customReason: values.customReason || ''
       }
       
       const response = await starsService.giveStars(giveData)
@@ -130,7 +155,8 @@ const Give = () => {
           content: (
             <div>
               <p>您成功向 <strong>{selectedUser.name}</strong> 赠送了 <strong>{values.stars}</strong> 颗赞赞星！</p>
-              <p>赠送理由：{values.reason === '其他' ? values.customReason : values.reason}</p>
+              <p>赠送词条：<strong>{values.reasonKeyword}</strong></p>
+              <p>具体理由：{values.reasonText}</p>
             </div>
           ),
           onOk: async () => {
@@ -180,7 +206,7 @@ const Give = () => {
                   title="本月可赠送"
                   value={user.availableToGive}
                   prefix={<SendOutlined style={{ color: '#52c41a' }} />}
-                  suffix="⭐"
+                  suffix={<StarIcon color="#52c41a" />}
                   valueStyle={{ color: '#52c41a' }}
                 />
               </Col>
@@ -188,8 +214,8 @@ const Give = () => {
                 <Statistic
                   title="本月已赠送"
                   value={user.monthlyAllocation - user.availableToGive}
-                  prefix={<StarOutlined style={{ color: '#1890ff' }} />}
-                  suffix="⭐"
+                  prefix={<CheckCircleOutlined style={{ color: '#1890ff' }} />}
+                  suffix={<StarIcon color="#1890ff" />}
                   valueStyle={{ color: '#1890ff' }}
                 />
               </Col>
@@ -197,8 +223,8 @@ const Give = () => {
                 <Statistic
                   title="本月分配总数"
                   value={user.monthlyAllocation}
-                  prefix={<StarOutlined style={{ color: '#fa8c16' }} />}
-                  suffix="⭐"
+                  prefix={<GiftOutlined style={{ color: '#fa8c16' }} />}
+                  suffix={<StarIcon color="#fa8c16" />}
                   valueStyle={{ color: '#fa8c16' }}
                 />
               </Col>
@@ -228,6 +254,7 @@ const Give = () => {
               form={form}
               layout="vertical"
               onFinish={onFinish}
+              onValuesChange={handleFormValuesChange}
               disabled={user.availableToGive === 0}
             >
               <Form.Item
@@ -281,17 +308,17 @@ const Give = () => {
                   min={1}
                   max={user.availableToGive}
                   style={{ width: '100%' }}
-                  addonAfter="⭐"
+                  addonAfter={<StarIcon color="#52c41a" size="14px" />}
                 />
               </Form.Item>
 
               <Form.Item
-                label="赠送理由"
-                name="reason"
-                rules={[{ required: true, message: '请选择赠送理由' }]}
+                label="赠送词条"
+                name="reasonKeyword"
+                rules={[{ required: true, message: '请选择赠送词条' }]}
               >
                 <Select 
-                  placeholder="请选择赠送理由" 
+                  placeholder="请选择赠送词条" 
                   size="large"
                   loading={loadingReasons}
                 >
@@ -304,30 +331,20 @@ const Give = () => {
               </Form.Item>
 
               <Form.Item
-                noStyle
-                shouldUpdate={(prevValues, currentValues) => 
-                  prevValues.reason !== currentValues.reason
-                }
+                label="具体理由"
+                name="reasonText"
+                rules={[
+                  { required: true, message: '请填写具体理由' },
+                  { min: 5, message: '理由不少于5个字符' },
+                  { max: 100, message: '理由不能超过100个字符' }
+                ]}
               >
-                {({ getFieldValue }) =>
-                  getFieldValue('reason') === '其他' ? (
-                    <Form.Item
-                      label="具体理由"
-                      name="customReason"
-                      rules={[
-                        { required: true, message: '请填写具体理由' },
-                        { min: 5, message: '理由不少于5个字符' }
-                      ]}
-                    >
-                      <TextArea
-                        placeholder="请详细描述赠送理由..."
-                        rows={3}
-                        maxLength={100}
-                        showCount
-                      />
-                    </Form.Item>
-                  ) : null
-                }
+                <TextArea
+                  placeholder="请详细描述赠送理由..."
+                  rows={3}
+                  maxLength={100}
+                  showCount
+                />
               </Form.Item>
 
               <Form.Item>
@@ -347,9 +364,9 @@ const Give = () => {
           </Card>
         </Col>
 
-        {/* 选中用户信息 */}
+        {/* 赠送信息确认 */}
         <Col xs={24} lg={8}>
-          <Card title="赠送对象信息" className="card-shadow">
+          <Card title="赠送信息确认" className="card-shadow">
             {selectedUser ? (
               <div>
                 <div style={{ textAlign: 'center', marginBottom: 16 }}>
@@ -361,37 +378,27 @@ const Give = () => {
                   </div>
                 </div>
                 
-                <div style={{ background: '#f5f5f5', padding: 12, borderRadius: 6 }}>
-                  <Row gutter={[8, 8]}>
-                    <Col span={12}>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: 18, fontWeight: 'bold', color: '#1890ff' }}>
-                          {selectedUser.monthlyAllocation}
-                        </div>
-                        <div style={{ fontSize: 12, color: '#666' }}>本月分配</div>
-                      </div>
-                    </Col>
-                    <Col span={12}>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: 18, fontWeight: 'bold', color: '#52c41a' }}>
-                          {selectedUser.availableToGive}
-                        </div>
-                        <div style={{ fontSize: 12, color: '#666' }}>可赠送</div>
-                      </div>
-                    </Col>
-                  </Row>
-                  <Row gutter={[8, 8]} style={{ marginTop: 8 }}>
-                    <Col span={24}>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: 14, fontWeight: 'bold', color: '#fa8c16' }}>
-                          已赠送: {selectedUser.givenThisMonth}⭐
-                        </div>
-                        <div style={{ fontSize: 12, color: '#666' }}>
-                          本月已使用 {selectedUser.givenThisMonth} / {selectedUser.monthlyAllocation} 颗
-                        </div>
-                      </div>
-                    </Col>
-                  </Row>
+                <div style={{ background: '#f5f5f5', padding: 16, borderRadius: 6 }}>
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 14, color: '#666', marginBottom: 4 }}>赠送数量</div>
+                    <div style={{ fontSize: 18, fontWeight: 'bold', color: '#52c41a' }}>
+                      {formValues.stars || 0} <StarIcon color="#52c41a" size="16px" />
+                    </div>
+                  </div>
+                  
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 14, color: '#666', marginBottom: 4 }}>赠送词条</div>
+                    <div style={{ fontSize: 14, fontWeight: 'bold', color: '#1890ff' }}>
+                      {formValues.reasonKeyword || '请选择赠送词条'}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div style={{ fontSize: 14, color: '#666', marginBottom: 4 }}>具体理由</div>
+                    <div style={{ fontSize: 14, fontWeight: 'bold', color: '#1890ff' }}>
+                      {formValues.reasonText || '请填写具体理由'}
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : (

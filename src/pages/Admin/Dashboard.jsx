@@ -108,6 +108,56 @@ const AdminDashboard = () => {
   // 部门统计数据
   const departmentStats = stats.departments || []
 
+  // 获取显示理由
+  const getDisplayReason = (item) => {
+    // 新的数据结构：reason是对象，包含keyword和reason
+    if (item.reason && typeof item.reason === 'object') {
+      const { keyword, reason } = item.reason
+      if (keyword && reason) {
+        return (
+          <div>
+            <span style={{ 
+              color: '#1890ff', 
+              fontWeight: 'bold',
+              fontSize: '12px',
+              backgroundColor: '#f0f8ff',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              marginRight: '6px'
+            }}>
+              {keyword}
+            </span>
+            <span style={{ color: '#333', fontSize: '12px' }}>
+              {reason}
+            </span>
+          </div>
+        )
+      } else if (keyword) {
+        return (
+          <span style={{ 
+            color: '#1890ff', 
+            fontWeight: 'bold',
+            fontSize: '12px',
+            backgroundColor: '#f0f8ff',
+            padding: '2px 6px',
+            borderRadius: '4px'
+          }}>
+            {keyword}
+          </span>
+        )
+      } else if (reason) {
+        return <span style={{ color: '#333', fontSize: '12px' }}>{reason}</span>
+      }
+    }
+    
+    // 兼容旧数据结构
+    if (item.reason === '其他' && item.customReason) {
+      return <span style={{ color: '#333', fontSize: '12px' }}>{item.customReason}</span>
+    }
+    
+    return <span style={{ color: '#999', fontSize: '12px' }}>{typeof item.reason === 'string' ? item.reason : '无理由'}</span>
+  }
+
   const departmentColumns = [
     {
       title: '部门',
@@ -432,7 +482,7 @@ const AdminDashboard = () => {
                     description={
                       <div>
                         <div style={{ fontSize: 12 }}>
-                          {item.reason === '其他' ? item.customReason : item.reason}
+                          {getDisplayReason(item)}
                         </div>
                         <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
                           {item.createTime || item.createdAt}

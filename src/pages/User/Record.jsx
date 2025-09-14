@@ -32,6 +32,20 @@ import { useAuth } from '../../contexts/AuthContext'
 import { starsService } from '../../services/starsService'
 import dayjs from 'dayjs'
 
+// 立体星星组件
+const StarIcon = ({ color = '#722ed1', size = '16px' }) => (
+  <span style={{
+    display: 'inline-block',
+    fontSize: size,
+    filter: `drop-shadow(0 2px 4px ${color}40)`,
+    textShadow: `0 1px 3px ${color}60, 0 0 6px ${color}40`,
+    transform: 'perspective(100px) rotateX(10deg)',
+    fontWeight: 'bold'
+  }}>
+    ⭐
+  </span>
+)
+
 const { RangePicker } = DatePicker
 const { Option } = Select
 const { TabPane } = Tabs
@@ -232,10 +246,52 @@ const Record = () => {
 
   // 获取显示理由
   const getDisplayReason = (item) => {
-    if (item.reason === '其他' && item.custom_reason) {
-      return item.custom_reason
+    // 新的数据结构：reason是对象，包含keyword和reason
+    if (item.reason && typeof item.reason === 'object') {
+      const { keyword, reason } = item.reason
+      if (keyword && reason) {
+        return (
+          <div>
+            <span style={{ 
+              color: '#1890ff', 
+              fontWeight: 'bold',
+              fontSize: '13px',
+              backgroundColor: '#f0f8ff',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              marginRight: '6px'
+            }}>
+              {keyword}
+            </span>
+            <span style={{ color: '#333', fontSize: '13px' }}>
+              {reason}
+            </span>
+          </div>
+        )
+      } else if (keyword) {
+        return (
+          <span style={{ 
+            color: '#1890ff', 
+            fontWeight: 'bold',
+            fontSize: '13px',
+            backgroundColor: '#f0f8ff',
+            padding: '2px 6px',
+            borderRadius: '4px'
+          }}>
+            {keyword}
+          </span>
+        )
+      } else if (reason) {
+        return <span style={{ color: '#333', fontSize: '13px' }}>{reason}</span>
+      }
     }
-    return item.reason || '无理由'
+    
+    // 兼容旧数据结构
+    if (item.reason === '其他' && item.custom_reason) {
+      return <span style={{ color: '#333', fontSize: '13px' }}>{item.custom_reason}</span>
+    }
+    
+    return <span style={{ color: '#999', fontSize: '13px' }}>{typeof item.reason === 'string' ? item.reason : '无理由'}</span>
   }
 
   // 表格列定义
@@ -280,14 +336,13 @@ const Record = () => {
         const isReceived = record.to_user_id === user?.id
         return (
           <Tag color={isReceived ? 'blue' : 'green'} style={{ fontSize: 14 }}>
-            {isReceived ? '+' : '-'}{stars}⭐
+            {isReceived ? '+' : '-'}{stars} <StarIcon color={isReceived ? '#1890ff' : '#52c41a'} size="14px" />
           </Tag>
         )
       }
     },
     {
       title: '理由',
-      dataIndex: 'reason',
       key: 'reason',
       render: (_, record) => getDisplayReason(record)
     },
@@ -417,7 +472,7 @@ const Record = () => {
                             fontWeight: 'bold'
                           }}
                         >
-                          {isReceived ? '+' : '-'}{record.stars}⭐
+                          {isReceived ? '+' : '-'}{record.stars} <StarIcon color={isReceived ? '#1890ff' : '#52c41a'} size="16px" />
                         </Tag>
                       </div>
                       
@@ -571,7 +626,7 @@ const Record = () => {
                          title={<span style={{ fontSize: isMobile ? 12 : 14 }}>收到赞赞星</span>}
                          value={displaySummary.totalReceived}
                          prefix={<StarOutlined style={{ color: '#1890ff' }} />}
-                         suffix="⭐"
+                         suffix={<StarIcon color="#1890ff" />}
                          valueStyle={{ 
                            color: '#1890ff',
                            fontSize: isMobile ? 16 : 20
@@ -603,7 +658,7 @@ const Record = () => {
                          title={<span style={{ fontSize: isMobile ? 12 : 14 }}>赠送赞赞星</span>}
                          value={displaySummary.totalGiven}
                          prefix={<SendOutlined style={{ color: '#52c41a' }} />}
-                         suffix="⭐"
+                         suffix={<StarIcon color="#52c41a" />}
                          valueStyle={{ 
                            color: '#52c41a',
                            fontSize: isMobile ? 16 : 20
