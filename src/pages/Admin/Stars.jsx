@@ -621,8 +621,14 @@ const AdminStars = () => {
       })
       
       if (response.success) {
-      message.success('设置保存成功')
-        await loadSystemSettings() // 重新加载设置，这会同时更新levelSettings
+        message.success('设置保存成功')
+        // 重新加载所有相关数据
+        await Promise.all([
+          loadSystemSettings(),    // 重新加载系统设置
+          loadAllocationRules(),   // 重新加载分配规则
+          // loadStatistics(),        // 重新加载统计数据
+          // loadGiveRecords()        // 重新加载赠送记录
+        ])
       } else {
         message.error(response.message || '设置保存失败')
       }
@@ -793,7 +799,7 @@ const AdminStars = () => {
                   </Row>
 
                   <Form.Item
-                    label="赞赞星有效期"
+                    label="分配赞赞星有效期"
                     name="validityPeriod"
                     rules={[{ required: true, message: '请选择有效期类型' }]}
                   >
@@ -802,6 +808,22 @@ const AdminStars = () => {
                       <Option value="quarter">季度（每季度重置）</Option>
                       <Option value="year">年度（每年重置）</Option>
                     </Select>
+                  </Form.Item>
+
+                  <Form.Item
+                    label="获赠赞赞星有效期"
+                    style={{ marginBottom: 0 }}
+                  >
+                    <Input
+                      value="自然年内有效"
+                      disabled
+                      style={{ 
+                        backgroundColor: '#f5f5f5',
+                        color: '#999',
+                        cursor: 'not-allowed',
+                        marginBottom: 10
+                      }}
+                    />
                   </Form.Item>
 
                   <Form.Item>

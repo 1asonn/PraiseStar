@@ -205,10 +205,12 @@ const Record = () => {
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return
     
-    const nextPage = currentPage + 1
-    setCurrentPage(nextPage)
-    await fetchRecords(nextPage, true)
-  }, [currentPage, loadingMore, hasMore])
+    setCurrentPage(prevPage => {
+      const nextPage = prevPage + 1
+      fetchRecords(nextPage, true)
+      return nextPage
+    })
+  }, [loadingMore, hasMore])
 
   // 处理筛选条件变化
   const handleFilterChange = (key, value) => {
@@ -589,7 +591,7 @@ const Record = () => {
                <Button
                  type="primary"
                  icon={<FilterOutlined />}
-                 onClick={fetchRecords}
+                 onClick={() => fetchRecords(1, false)}
                  loading={loading}
                  size={isMobile ? 'small' : 'middle'}
                  style={{ flex: isMobile ? 'none' : 1 }}

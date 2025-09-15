@@ -428,7 +428,7 @@ const AdminDashboard = () => {
       <Row gutter={[8, 8]}>
         {/* 排行榜前5 */}
         <Col xs={24} lg={12}>
-          <Card title="年度排行榜 TOP5" className="card-shadow">
+          <Card title="年度获赠排行榜 TOP5" className="card-shadow">
             <List
               dataSource={rankings}
               renderItem={(item, index) => (

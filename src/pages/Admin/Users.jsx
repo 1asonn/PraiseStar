@@ -21,7 +21,8 @@ import {
   Avatar,
   Divider,
   Spin,
-  Alert
+  Alert,
+  AutoComplete
 } from 'antd'
 import {
   PlusOutlined,
@@ -688,7 +689,7 @@ const AdminUsers = () => {
                 <div style={{ 
                   fontSize: '16px', 
                   fontWeight: 'bold', 
-                  color: '#52c41a'
+                  color: '#1890ff'
                 }}>
                   {user.receivedThisMonth} ⭐
                 </div>
@@ -702,14 +703,14 @@ const AdminUsers = () => {
                 border: '1px solid #f0f0f0'
               }}>
                 <div style={{ fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>
-                  年度累计
+                  本月赠送
                 </div>
                 <div style={{ 
                   fontSize: '16px', 
                   fontWeight: 'bold', 
-                  color: '#722ed1'
+                  color: '#52c41a'
                 }}>
-                  {user.receivedThisYear} ⭐
+                  {user.givenThisMonth} ⭐
                 </div>
               </div>
             </Col>
@@ -721,14 +722,33 @@ const AdminUsers = () => {
                 border: '1px solid #f0f0f0'
               }}>
                 <div style={{ fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>
-                  年度已兑换
+                  累计获赠
+                </div>
+                <div style={{ 
+                  fontSize: '16px', 
+                  fontWeight: 'bold', 
+                  color: '#fa8c16'
+                }}>
+                  {user.receivedTotal} ⭐
+                </div>
+              </div>
+            </Col>
+            <Col span={12}>
+              <div style={{ 
+                backgroundColor: '#fff',
+                padding: '12px',
+                borderRadius: '6px',
+                border: '1px solid #f0f0f0'
+              }}>
+                <div style={{ fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>
+                  累计兑换
                 </div>
                 <div style={{ 
                   fontSize: '16px', 
                   fontWeight: 'bold', 
                   color: '#eb2f96'
                 }}>
-                  {user.redeemedThisYear} ⭐
+                  {user.redeemedTotal} ⭐
                 </div>
               </div>
             </Col>
@@ -815,17 +835,25 @@ const AdminUsers = () => {
       render: (value) => <span style={{ color: '#1890ff' }}>{value} ⭐</span>
     },
     {
-      title: '年度累计获赠',
-      dataIndex: 'receivedThisYear',
-      key: 'receivedThisYear',
-      width: 110,
+      title: '本月赠送',
+      dataIndex: 'givenThisMonth',
+      key: 'givenThisMonth',
+      width: 90,
+      align: 'center',
+      render: (value) => <span style={{ color: '#52c41a' }}>{value} ⭐</span>
+    },
+    {
+      title: '累计获赠',
+      dataIndex: 'receivedTotal',
+      key: 'receivedTotal',
+      width: 100,
       align: 'center',
       render: (value) => <span style={{ color: '#fa8c16' }}>{value} ⭐</span>
     },
     {
-      title: '年度已兑换',
-      dataIndex: 'redeemedThisYear',
-      key: 'redeemedThisYear',
+      title: '累计兑换',
+      dataIndex: 'redeemedTotal',
+      key: 'redeemedTotal',
       width: 100,
       align: 'center',
       render: (value) => <span style={{ color: '#eb2f96' }}>{value} ⭐</span>
@@ -1217,22 +1245,20 @@ const AdminUsers = () => {
                <Form.Item
                  label="部门"
                  name="department"
-                 rules={[{ required: true, message: '请选择部门' }]}
+                 rules={[{ required: true, message: '请输入或选择部门' }]}
                >
-                 <Select 
-                   placeholder="请选择部门"
-                   loading={allDepartments.length === 0}
+                 <AutoComplete
+                   placeholder="请输入或选择部门"
                    style={{ width: '100%', minWidth: '120px' }}
-                   showSearch
-                   filterOption={(input, option) =>
-                     (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                   allowClear
+                   filterOption={(inputValue, option) =>
+                     option.value.toLowerCase().includes(inputValue.toLowerCase())
                    }
-                 >
-                   {/* 使用动态获取的部门列表 */}
-                   {allDepartments.map(dept => (
-                     <Option key={dept} value={dept}>{dept}</Option>
-                   ))}
-                 </Select>
+                   options={allDepartments.map(dept => ({
+                     value: dept,
+                     label: dept
+                   }))}
+                 />
                </Form.Item>
              </Col>
              <Col span={isMobile ? 24 : 12}>

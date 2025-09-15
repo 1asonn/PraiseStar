@@ -213,7 +213,7 @@ const Give = () => {
               <Col xs={24} sm={8}>
                 <Statistic
                   title="本月已赠送"
-                  value={user.monthlyAllocation - user.availableToGive}
+                  value={user.givenThisMonth}
                   prefix={<CheckCircleOutlined style={{ color: '#1890ff' }} />}
                   suffix={<StarIcon color="#1890ff" />}
                   valueStyle={{ color: '#1890ff' }}
