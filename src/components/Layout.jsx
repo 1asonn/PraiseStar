@@ -22,7 +22,9 @@ import {
   LogoutOutlined,
   MessageOutlined,
   HistoryOutlined,
-  SwapOutlined
+  SwapOutlined,
+  ImportOutlined,
+  ExportOutlined
 } from '@ant-design/icons'
 import { useAuth } from '../contexts/AuthContext'
 import ProfileModal from './ProfileModal'
@@ -93,6 +95,16 @@ const Layout = ({ userType }) => {
       key: '/admin/bullet-screen',
       icon: <MessageOutlined />,
       label: '弹幕设置'
+    },
+    {
+      key: '/admin/import',
+      icon: <ImportOutlined />,
+      label: '导入中心'
+    },
+    {
+      key: '/admin/export',
+      icon: <ExportOutlined />,
+      label: '导出中心'
     }
   ]
 

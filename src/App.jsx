@@ -12,6 +12,8 @@ import AdminUsers from './pages/Admin/Users'
 import AdminStars from './pages/Admin/Stars'
 import AdminGifts from './pages/Admin/Gifts'
 import AdminBulletScreen from './pages/Admin/BulletScreen'
+import ImportCenter from './pages/Admin/ImportCenter'
+import ExportCenter from './pages/Admin/ExportCenter'
 import Login from './pages/Login'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 
@@ -103,6 +105,8 @@ function App() {
             <Route path="stars" element={<AdminStars />} />
             <Route path="gifts" element={<AdminGifts />} />
             <Route path="bullet-screen" element={<AdminBulletScreen />} />
+            <Route path="import" element={<ImportCenter />} />
+            <Route path="export" element={<ExportCenter />} />
           </Route>
         </Routes>
       </Router>
