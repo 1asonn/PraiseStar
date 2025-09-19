@@ -16,21 +16,33 @@ import {
   Popconfirm,
   Typography,
   Tooltip,
-  Empty
+  Empty,
+  Tabs,
+  Switch,
+  Divider,
+  Statistic
 } from 'antd'
 import {
   SettingOutlined,
   MessageOutlined,
   PlusOutlined,
   EditOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  SendOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  InfoCircleOutlined
 } from '@ant-design/icons'
+import axios from 'axios'
 import { feishuConfigAPI } from '../../services/apiClient'
+import apiClient from '../../services/apiClient'
 
 const { Title, Text } = Typography
 
 const AdminBulletScreen = () => {
   const [configForm] = Form.useForm()
+  const [starGiveForm] = Form.useForm()
+  const [testForm] = Form.useForm()
   
   // 飞书配置状态
   const [feishuConfigs, setFeishuConfigs] = useState([])
@@ -39,6 +51,13 @@ const AdminBulletScreen = () => {
   const [editingConfig, setEditingConfig] = useState(null)
   const [testingThreshold, setTestingThreshold] = useState(null)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+  
+  // 赞赞星赠送飞书通知配置状态
+  const [starGiveConfigs, setStarGiveConfigs] = useState([])
+  const [starGiveModalVisible, setStarGiveModalVisible] = useState(false)
+  const [editingStarGiveConfig, setEditingStarGiveConfig] = useState(null)
+  const [testModalVisible, setTestModalVisible] = useState(false)
+  const [testConfig, setTestConfig] = useState(null)
 
   // 监听窗口大小变化
   useEffect(() => {
@@ -56,6 +75,7 @@ const AdminBulletScreen = () => {
   // 组件挂载时加载飞书配置
   useEffect(() => {
     loadFeishuConfigs()
+    loadStarGiveConfigs()
   }, [])
 
   // 加载飞书配置列表
@@ -73,6 +93,34 @@ const AdminBulletScreen = () => {
       message.error('加载飞书配置失败')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // 加载赞赞星赠送飞书通知配置
+  const loadStarGiveConfigs = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      
+      const tempAxios = axios.create({
+        baseURL: apiClient.defaults.baseURL,
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      
+      tempAxios.defaults.headers.Authorization = `Bearer ${token}`
+      
+      const response = await tempAxios.get('/star-give-feishu/configs')
+      
+      if (response.data.success) {
+        setStarGiveConfigs(response.data.data)
+      } else {
+        message.error(response.data.message || '获取赞赞星配置失败')
+      }
+    } catch (error) {
+      console.error('获取赞赞星配置失败:', error)
+      message.error('获取赞赞星配置失败')
     }
   }
 
@@ -160,6 +208,126 @@ const AdminBulletScreen = () => {
     }
   }
 
+  // 赞赞星赠送飞书通知配置相关函数
+  const handleOpenStarGiveModal = (config = null) => {
+    setEditingStarGiveConfig(config)
+    setStarGiveModalVisible(true)
+    if (config) {
+      starGiveForm.setFieldsValue({
+        webhook_url: config.webhook_url,
+        template_id: config.template_id,
+        template_version: config.template_version,
+        description: config.description,
+        is_active: config.is_active
+      })
+    } else {
+      starGiveForm.resetFields()
+    }
+  }
+
+  const handleSaveStarGiveConfig = async (values) => {
+    try {
+      const token = localStorage.getItem('token')
+      
+      const tempAxios = axios.create({
+        baseURL: apiClient.defaults.baseURL,
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      
+      tempAxios.defaults.headers.Authorization = `Bearer ${token}`
+      
+      let response
+      if (editingStarGiveConfig) {
+        response = await tempAxios.put(`/star-give-feishu/config/${editingStarGiveConfig.id}`, values)
+      } else {
+        response = await tempAxios.post('/star-give-feishu/config', values)
+      }
+      
+      if (response.data.success) {
+        message.success(editingStarGiveConfig ? '配置更新成功' : '配置创建成功')
+        setStarGiveModalVisible(false)
+        setEditingStarGiveConfig(null)
+        starGiveForm.resetFields()
+        loadStarGiveConfigs()
+      } else {
+        message.error(response.data.message || '保存配置失败')
+      }
+    } catch (error) {
+      console.error('保存赞赞星配置失败:', error)
+      message.error('保存配置失败')
+    }
+  }
+
+  const handleDeleteStarGiveConfig = async (id) => {
+    try {
+      const token = localStorage.getItem('token')
+      
+      const tempAxios = axios.create({
+        baseURL: apiClient.defaults.baseURL,
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      
+      tempAxios.defaults.headers.Authorization = `Bearer ${token}`
+      
+      const response = await tempAxios.delete(`/star-give-feishu/config/${id}`)
+      
+      if (response.data.success) {
+        message.success('配置删除成功')
+        loadStarGiveConfigs()
+      } else {
+        message.error(response.data.message || '删除配置失败')
+      }
+    } catch (error) {
+      console.error('删除赞赞星配置失败:', error)
+      message.error('删除配置失败')
+    }
+  }
+
+  const handleOpenTestModal = (config) => {
+    setTestConfig(config)
+    testForm.setFieldsValue({
+      test_user_name: '测试用户'
+    })
+    setTestModalVisible(true)
+  }
+
+  const handleTestStarGiveConfig = async (values) => {
+    try {
+      const token = localStorage.getItem('token')
+      
+      const tempAxios = axios.create({
+        baseURL: apiClient.defaults.baseURL,
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      
+      tempAxios.defaults.headers.Authorization = `Bearer ${token}`
+      
+      const response = await tempAxios.post('/star-give-feishu/test', {
+        config_id: testConfig.id,
+        test_user_name: values.test_user_name
+      })
+      
+      if (response.data.success) {
+        message.success('测试通知发送成功')
+        setTestModalVisible(false)
+        testForm.resetFields()
+      } else {
+        message.error(response.data.message || '测试失败')
+      }
+    } catch (error) {
+      console.error('测试失败:', error)
+      message.error('测试失败')
+    }
+  }
 
   // 飞书配置表格列定义 - 桌面端
   const desktopColumns = [
@@ -319,12 +487,130 @@ const AdminBulletScreen = () => {
 
   const feishuConfigColumns = isMobile ? mobileColumns : desktopColumns
 
+  // 赞赞星赠送飞书通知配置表格列定义
+  const starGiveColumns = [
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      key: 'id',
+      width: 80,
+      align: 'center'
+    },
+    {
+      title: '模板ID',
+      dataIndex: 'template_id',
+      key: 'template_id',
+      width: 150,
+      render: (templateId) => (
+        <Tag color="blue">{templateId}</Tag>
+      )
+    },
+    {
+      title: '模板版本',
+      dataIndex: 'template_version',
+      key: 'template_version',
+      width: 120,
+      render: (version) => version || '-'
+    },
+    {
+      title: 'Webhook URL',
+      dataIndex: 'webhook_url',
+      key: 'webhook_url',
+      ellipsis: true,
+      render: (url) => (
+        <Tooltip title={url}>
+          <Text code style={{ fontSize: '12px' }}>
+            {url.length > 30 ? `${url.substring(0, 30)}...` : url}
+          </Text>
+        </Tooltip>
+      )
+    },
+    {
+      title: '描述',
+      dataIndex: 'description',
+      key: 'description',
+      ellipsis: true,
+      render: (description) => description || '-'
+    },
+    {
+      title: '状态',
+      dataIndex: 'is_active',
+      key: 'is_active',
+      width: 100,
+      align: 'center',
+      render: (isActive) => (
+        <Tag color={isActive ? 'green' : 'red'} icon={isActive ? <CheckCircleOutlined /> : <CloseCircleOutlined />}>
+          {isActive ? '启用' : '禁用'}
+        </Tag>
+      )
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 150,
+      render: (date) => new Date(date).toLocaleString('zh-CN')
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 200,
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="link"
+            icon={<EditOutlined />}
+            onClick={() => handleOpenStarGiveModal(record)}
+            size="small"
+          >
+            编辑
+          </Button>
+          <Button
+            type="link"
+            icon={<SendOutlined />}
+            onClick={() => handleOpenTestModal(record)}
+            size="small"
+            disabled={!record.is_active}
+          >
+            测试
+          </Button>
+          <Popconfirm
+            title="确定要删除这个配置吗？"
+            onConfirm={() => handleDeleteStarGiveConfig(record.id)}
+            okText="确定"
+            cancelText="取消"
+          >
+            <Button
+              type="link"
+              danger
+              icon={<DeleteOutlined />}
+              size="small"
+            >
+              删除
+            </Button>
+          </Popconfirm>
+        </Space>
+      )
+    }
+  ]
+
   return (
     <div>
-      <Row gutter={[16, 16]}>
-
-        {/* 飞书配置管理 */}
-        <Col xs={24}>
+      <Tabs
+        defaultActiveKey="threshold"
+        items={[
+          {
+            key: 'threshold',
+            label: (
+              <span>
+                <MessageOutlined />
+                弹幕阈值配置
+              </span>
+            ),
+            children: (
+              <Row gutter={[16, 16]}>
+                {/* 飞书配置管理 */}
+                <Col xs={24}>
           <Card 
             title={
               <div style={{ 
@@ -480,6 +766,257 @@ const AdminBulletScreen = () => {
       </Row>
         </Col>
       </Row>
+            )
+          },
+          {
+            key: 'star-give',
+            label: (
+              <span>
+                <SendOutlined />
+                赞赞星赠送通知
+              </span>
+            ),
+            children: (
+              <Row gutter={[16, 16]}>
+                {/* 统计概览 */}
+                <Col xs={24}>
+                  <Card>
+                    <Row gutter={16}>
+                      <Col span={8}>
+                        <Statistic
+                          title="总配置数"
+                          value={starGiveConfigs.length}
+                          prefix={<SettingOutlined />}
+                          valueStyle={{ color: '#1890ff' }}
+                        />
+                      </Col>
+                      <Col span={8}>
+                        <Statistic
+                          title="启用配置"
+                          value={starGiveConfigs.filter(config => config.is_active).length}
+                          prefix={<CheckCircleOutlined />}
+                          valueStyle={{ color: '#52c41a' }}
+                        />
+                      </Col>
+                      <Col span={8}>
+                        <Statistic
+                          title="禁用配置"
+                          value={starGiveConfigs.filter(config => !config.is_active).length}
+                          prefix={<CloseCircleOutlined />}
+                          valueStyle={{ color: '#ff4d4f' }}
+                        />
+                      </Col>
+                    </Row>
+                  </Card>
+                </Col>
+
+                {/* 配置列表 */}
+                <Col xs={24}>
+                  <Card
+                    title="赞赞星赠送飞书通知配置"
+                    extra={
+                      <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => handleOpenStarGiveModal()}
+                      >
+                        新增配置
+                      </Button>
+                    }
+                  >
+                    <Table
+                      columns={starGiveColumns}
+                      dataSource={starGiveConfigs}
+                      rowKey="id"
+                      pagination={{
+                        showSizeChanger: true,
+                        showQuickJumper: true,
+                        showTotal: (total, range) => 
+                          `第 ${range[0]}-${range[1]} 条，共 ${total} 条记录`
+                      }}
+                      scroll={{ x: 1000 }}
+                    />
+                  </Card>
+                </Col>
+
+                {/* 说明信息 */}
+                <Col xs={24}>
+                  <Alert
+                    message="配置说明"
+                    description={
+                      <div>
+                        <p>• 当用户赠送赞赞星时，系统会根据配置的模板发送飞书通知</p>
+                        <p>• 可以配置多个模板，系统会按顺序尝试发送</p>
+                        <p>• 只有启用状态的配置才会生效</p>
+                        <p>• 建议先测试配置是否正确，再启用使用</p>
+                      </div>
+                    }
+                    type="info"
+                    showIcon
+                  />
+                </Col>
+              </Row>
+            )
+          }
+        ]}
+      />
+
+      {/* 赞赞星赠送飞书通知配置弹窗 */}
+      <Modal
+        title={editingStarGiveConfig ? '编辑配置' : '新增配置'}
+        open={starGiveModalVisible}
+        onCancel={() => {
+          setStarGiveModalVisible(false)
+          setEditingStarGiveConfig(null)
+          starGiveForm.resetFields()
+        }}
+        footer={null}
+        width={600}
+      >
+        <Form
+          form={starGiveForm}
+          layout="vertical"
+          onFinish={handleSaveStarGiveConfig}
+        >
+          <Form.Item
+            name="webhook_url"
+            label="Webhook URL"
+            rules={[
+              { required: true, message: '请输入Webhook URL' },
+              { type: 'url', message: '请输入有效的URL' }
+            ]}
+          >
+            <Input placeholder="请输入飞书机器人的Webhook URL" />
+          </Form.Item>
+
+          <Form.Item
+            name="template_id"
+            label="模板ID"
+            rules={[
+              { required: true, message: '请输入模板ID' },
+              { max: 100, message: '模板ID不能超过100个字符' }
+            ]}
+          >
+            <Input placeholder="请输入飞书卡片模板ID" />
+          </Form.Item>
+
+          <Form.Item
+            name="template_version"
+            label="模板版本"
+            rules={[
+              { max: 50, message: '模板版本不能超过50个字符' }
+            ]}
+          >
+            <Input placeholder="请输入模板版本（可选）" />
+          </Form.Item>
+
+          <Form.Item
+            name="description"
+            label="描述"
+            rules={[
+              { max: 255, message: '描述不能超过255个字符' }
+            ]}
+          >
+            <Input.TextArea 
+              placeholder="请输入配置描述（可选）" 
+              rows={3}
+            />
+          </Form.Item>
+
+          {editingStarGiveConfig && (
+            <Form.Item
+              name="is_active"
+              label="启用状态"
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+          )}
+
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button onClick={() => {
+                setStarGiveModalVisible(false)
+                setEditingStarGiveConfig(null)
+                starGiveForm.resetFields()
+              }}>
+                取消
+              </Button>
+              <Button type="primary" htmlType="submit">
+                {editingStarGiveConfig ? '更新' : '创建'}
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 测试配置弹窗 */}
+      <Modal
+        title="测试配置"
+        open={testModalVisible}
+        onCancel={() => {
+          setTestModalVisible(false)
+          setTestConfig(null)
+          testForm.resetFields()
+        }}
+        footer={null}
+        width={400}
+      >
+        {testConfig && (
+          <div>
+            <Alert
+              message="测试说明"
+              description="将发送一条测试通知到配置的飞书群，用于验证配置是否正确"
+              type="info"
+              showIcon
+              style={{ marginBottom: '16px' }}
+            />
+            
+            <Form
+              form={testForm}
+              layout="vertical"
+              onFinish={handleTestStarGiveConfig}
+            >
+              <Form.Item
+                name="test_user_name"
+                label="测试用户姓名"
+                rules={[
+                  { required: true, message: '请输入测试用户姓名' },
+                  { max: 50, message: '测试用户姓名不能超过50个字符' }
+                ]}
+              >
+                <Input placeholder="请输入测试用户姓名" />
+              </Form.Item>
+
+              <Divider />
+
+              <div style={{ marginBottom: '16px' }}>
+                <Text strong>配置信息：</Text>
+                <div style={{ marginTop: '8px', padding: '8px', background: '#f5f5f5', borderRadius: '4px' }}>
+                  <div><Text code>模板ID: {testConfig.template_id}</Text></div>
+                  <div><Text code>版本: {testConfig.template_version || '默认'}</Text></div>
+                  <div><Text code>状态: {testConfig.is_active ? '启用' : '禁用'}</Text></div>
+                </div>
+              </div>
+
+              <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+                <Space>
+                  <Button onClick={() => {
+                    setTestModalVisible(false)
+                    setTestConfig(null)
+                    testForm.resetFields()
+                  }}>
+                    取消
+                  </Button>
+                  <Button type="primary" htmlType="submit">
+                    发送测试
+                  </Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </div>
+        )}
+      </Modal>
 
       {/* 新增/编辑飞书配置弹窗 */}
       <Modal

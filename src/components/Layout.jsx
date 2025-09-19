@@ -105,7 +105,12 @@ const Layout = ({ userType }) => {
       key: '/admin/export',
       icon: <ExportOutlined />,
       label: '导出中心'
-    }
+    },
+    {
+      key: '/admin/keyword-rankings',
+      icon: <TrophyOutlined />,
+      label: '词条排行榜'
+    },
   ]
 
   const menuItems = currentView === 'admin' ? adminMenuItems : userMenuItems

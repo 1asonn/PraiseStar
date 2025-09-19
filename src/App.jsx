@@ -14,6 +14,7 @@ import AdminGifts from './pages/Admin/Gifts'
 import AdminBulletScreen from './pages/Admin/BulletScreen'
 import ImportCenter from './pages/Admin/ImportCenter'
 import ExportCenter from './pages/Admin/ExportCenter'
+import KeywordRankings from './pages/Admin/KeywordRankings'
 import Login from './pages/Login'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 
@@ -107,6 +108,7 @@ function App() {
             <Route path="bullet-screen" element={<AdminBulletScreen />} />
             <Route path="import" element={<ImportCenter />} />
             <Route path="export" element={<ExportCenter />} />
+            <Route path="keyword-rankings" element={<KeywordRankings />} />
           </Route>
         </Routes>
       </Router>
