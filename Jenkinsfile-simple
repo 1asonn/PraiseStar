@@ -1,0 +1,310 @@
+pipeline {
+    agent any
+    
+    environment {
+        DEPLOY_SERVER = '39.105.117.48'
+        DEPLOY_PATH = '/var/www/html'
+    }
+    
+    stages {
+        stage('代码检出') {
+            steps {
+                echo '正在检出代码...'
+                script {
+                    if (env.BRANCH_NAME) {
+                        echo "检出分支: ${env.BRANCH_NAME}"
+                        checkout scm
+                    } else {
+                        echo '检出main分支...'
+                        checkout([
+                            $class: 'GitSCM',
+                            branches: [[name: '*/main']],
+                            extensions: [[
+                                $class: 'CleanBeforeCheckout'
+                            ]],
+                            userRemoteConfigs: [[
+                                url: 'https://github.com/1asonn/PraiseStar.git'
+                            ]]
+                        ])
+                    }
+                }
+                
+                // 显示检出信息
+                bat '''
+                    echo === 代码检出完成 ===
+                    git log -1 --oneline
+                    git branch --show-current
+                '''
+            }
+        }
+        
+        stage('环境检查') {
+            steps {
+                echo '检查Node.js环境...'
+                bat '''
+                    echo === Node.js环境检查 ===
+                    node --version
+                    npm --version
+                    
+                    echo === 项目文件检查 ===
+                    if exist package.json (
+                        echo package.json 存在
+                        echo 显示package.json中的scripts部分:
+                        findstr /n "scripts" -A 10 package.json
+                    ) else (
+                        echo 错误: package.json 不存在
+                        exit 1
+                    )
+                '''
+            }
+        }
+        
+        stage('清理缓存') {
+            steps {
+                echo '清理npm缓存...'
+                bat '''
+                    echo === 清理npm缓存 ===
+                    npm cache clean --force
+                    
+                    echo === 删除现有node_modules ===
+                    if exist node_modules rmdir /s /q node_modules
+                '''
+            }
+        }
+        
+        stage('安装依赖') {
+            steps {
+                echo '安装项目依赖...'
+                bat '''
+                    echo === 开始安装依赖 ===
+                    if exist package-lock.json (
+                        echo 使用 npm ci 安装
+                        npm ci
+                    ) else (
+                        echo 使用 npm install 安装
+                        npm install
+                    )
+                    
+                    echo === 验证依赖安装 ===
+                    if exist node_modules (
+                        echo 依赖安装成功
+                        echo node_modules目录大小:
+                        dir node_modules | find "个文件"
+                        
+                        echo === 检查关键依赖 ===
+                        if exist node_modules\\.bin\\webpack.cmd (
+                            echo webpack 命令文件存在
+                        ) else (
+                            if exist node_modules\\.bin\\webpack (
+                                echo webpack 存在
+                            ) else (
+                                echo 警告: webpack 命令未找到
+                            )
+                        )
+                        
+                        if exist node_modules\\webpack-cli (
+                            echo webpack-cli 已安装
+                        ) else (
+                            echo 警告: webpack-cli 未安装
+                        )
+                    ) else (
+                        echo 错误: node_modules 目录不存在
+                        exit 1
+                    )
+                '''
+            }
+        }
+        
+        stage('构建项目') {
+            steps {
+                echo '开始构建项目...'
+                bat '''
+                    echo === 构建项目 ===
+                    echo 当前目录内容:
+                    dir
+                    
+                    echo === 尝试构建 ===
+                    set "PATH=%CD%\\node_modules\\.bin;%PATH%"
+                    
+                    echo 方法1: 使用npm run build
+                    npm run build
+                '''
+            }
+        }
+        
+        stage('验证构建') {
+            steps {
+                echo '验证构建结果...'
+                bat '''
+                    echo === 验证构建结果 ===
+                    if exist dist (
+                        echo 构建成功! dist目录存在
+                        echo dist目录内容:
+                        dir dist
+                        echo 详细文件列表:
+                        dir dist /s
+                        
+                        echo === 检查关键文件 ===
+                        if exist dist\\index.html (
+                            echo index.html 存在
+                        ) else (
+                            echo 警告: index.html 不存在
+                        )
+                        
+                        if exist dist\\*.js (
+                            echo JavaScript文件存在
+                        ) else (
+                            echo 警告: 没有找到JavaScript文件
+                        )
+                    ) else (
+                        echo 构建失败: dist目录不存在
+                        echo 当前目录内容:
+                        dir
+                        exit 1
+                    )
+                '''
+            }
+        }
+        
+        stage('打包产物') {
+            steps {
+                echo '打包构建产物...'
+                script {
+                    def timestamp = new Date().format('yyyyMMdd_HHmmss')
+                    bat """
+                        echo === 打包构建产物 ===
+                        if exist dist (
+                            powershell -Command "Compress-Archive -Path 'dist\\*' -DestinationPath 'praisestar-build-${env.BUILD_NUMBER}-${timestamp}.zip' -Force"
+                            echo 打包完成: praisestar-build-${env.BUILD_NUMBER}-${timestamp}.zip
+                            dir *.zip
+                        ) else (
+                            echo 错误: dist目录不存在，无法打包
+                            exit 1
+                        )
+                    """
+                }
+                
+                // 归档构建产物
+                archiveArtifacts artifacts: '*.zip', fingerprint: true, allowEmptyArchive: false
+            }
+        }
+        
+        stage('部署准备') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'master'
+                    branch 'develop'
+                }
+            }
+            steps {
+                echo '准备部署文件...'
+                bat '''
+                    echo === 生成部署说明 ===
+                    (
+                        echo 部署说明文档
+                        echo ================
+                        echo.
+                        echo 构建信息:
+                        echo - 构建号: %BUILD_NUMBER%
+                        echo - 构建时间: %date% %time%
+                        echo - 分支: %BRANCH_NAME%
+                        echo.
+                        echo 部署步骤:
+                        echo 1. 下载构建产物 praisestar-build-%BUILD_NUMBER%-*.zip
+                        echo 2. 解压到临时目录
+                        echo 3. 备份服务器当前版本: ssh user@39.105.117.48 "sudo cp -r /var/www/html /var/www/backup_$(date +%%Y%%m%%d_%%H%%M%%S)"
+                        echo 4. 上传文件: scp -r dist/* user@39.105.117.48:/var/www/html/
+                        echo 5. 重启Web服务: ssh user@39.105.117.48 "sudo systemctl reload nginx"
+                        echo.
+                        echo 访问地址: http://39.105.117.48
+                    ) > 部署说明.txt
+                    
+                    echo 部署说明已生成
+                    type 部署说明.txt
+                '''
+                
+                // 归档部署说明
+                archiveArtifacts artifacts: '部署说明.txt', fingerprint: true
+            }
+        }
+    }
+    
+    post {
+        always {
+            script {
+                node {
+                    echo '清理构建环境...'
+                    bat '''
+                        echo === 清理临时文件 ===
+                        if exist *.zip del *.zip
+                        if exist 部署说明.txt del 部署说明.txt
+                        echo 清理完成
+                    '''
+                    cleanWs()
+                }
+            }
+        }
+        success {
+            echo '✅ 构建成功！'
+            script {
+                def message = """
+🎉 PraiseStar前端构建成功！
+
+📋 构建信息：
+- 项目分支：${env.BRANCH_NAME ?: 'main'}
+- 构建编号：${env.BUILD_NUMBER}
+- 构建时间：${new Date()}
+
+🚀 构建产物：
+- 构建包已归档，可在Jenkins中下载
+- 包含完整的dist目录内容
+- 附带部署说明文档
+
+📥 下载地址：
+- Jenkins构建页面 → 构建产物 → 下载zip文件
+
+🔧 部署建议：
+1. 下载构建产物
+2. 按照部署说明文档执行部署
+3. 访问 http://39.105.117.48 验证部署结果
+
+💡 提示：
+- 如需自动部署，请配置SSH密钥和部署脚本
+- 建议在测试环境先验证后再部署到生产环境
+"""
+                echo message
+            }
+        }
+        failure {
+            echo '❌ 构建失败！'
+            script {
+                def message = """
+💥 PraiseStar前端构建失败！
+
+📋 失败信息：
+- 项目分支：${env.BRANCH_NAME ?: 'main'}
+- 构建编号：${env.BUILD_NUMBER}
+- 失败时间：${new Date()}
+
+🔍 常见问题排查：
+1. 检查Node.js版本是否正确 (需要16+)
+2. 检查package.json是否存在且格式正确
+3. 检查网络连接，确保能访问npm仓库
+4. 检查依赖包是否正确安装
+
+🛠️ 解决建议：
+- 查看详细日志：${env.BUILD_URL}console
+- 检查Jenkins服务器的Node.js环境
+- 尝试本地构建验证代码是否正常
+- 检查package.json中的build脚本配置
+
+📞 需要帮助？
+- 联系开发团队获取支持
+- 检查项目README文档
+"""
+                echo message
+            }
+        }
+    }
+}

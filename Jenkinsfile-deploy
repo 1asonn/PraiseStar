@@ -1,0 +1,464 @@
+// PraiseStar前端发布Pipeline
+// 此Pipeline用于部署已构建的产物，不需要处理源代码
+// Git仓库：https://github.com/1asonn/PraiseStar.git
+// 分支：main (仅用于存储此Jenkinsfile，不用于构建)
+
+pipeline {
+    agent any
+    
+    parameters {
+        choice(
+            name: 'DEPLOY_ENV',
+            choices: ['test', 'production'],
+            description: '选择部署环境'
+        )
+        string(
+            name: 'BUILD_NUMBER_TO_DEPLOY',
+            defaultValue: '',
+            description: '要部署的构建号（留空则使用最新构建）'
+        )
+        choice(
+            name: 'DEPLOY_METHOD',
+            choices: ['scp', 'manual'],
+            description: '部署方式：scp自动部署 或 manual手动部署'
+        )
+        booleanParam(
+            name: 'BACKUP_CURRENT',
+            defaultValue: true,
+            description: '是否备份当前版本'
+        )
+        booleanParam(
+            name: 'RESTART_SERVICE',
+            defaultValue: true,
+            description: '是否重启Web服务'
+        )
+    }
+    
+    environment {
+        // 根据环境设置不同的服务器配置
+        TEST_SERVER = '39.105.117.48'
+        TEST_PATH = '/var/www/test'
+        TEST_USER = 'testuser'
+        
+        PROD_SERVER = '39.105.117.48'
+        PROD_PATH = '/var/www/html'
+        PROD_USER = 'deploy'
+        
+        // 动态设置当前环境的配置
+        DEPLOY_SERVER = "${params.DEPLOY_ENV == 'production' ? env.PROD_SERVER : env.TEST_SERVER}"
+        DEPLOY_PATH = "${params.DEPLOY_ENV == 'production' ? env.PROD_PATH : env.TEST_PATH}"
+        DEPLOY_USER = "${params.DEPLOY_ENV == 'production' ? env.PROD_USER : env.TEST_USER}"
+    }
+    
+    stages {
+        stage('部署确认') {
+            steps {
+                script {
+                    echo """
+                    ==========================================
+                    🚀 PraiseStar 前端部署确认
+                    ==========================================
+                    
+                    📋 部署配置：
+                    - 目标环境：${params.DEPLOY_ENV}
+                    - 目标服务器：${env.DEPLOY_SERVER}
+                    - 部署路径：${env.DEPLOY_PATH}
+                    - 部署用户：${env.DEPLOY_USER}
+                    - 部署方式：${params.DEPLOY_METHOD}
+                    - 构建号：${params.BUILD_NUMBER_TO_DEPLOY ?: '最新构建'}
+                    - 备份当前版本：${params.BACKUP_CURRENT ? '是' : '否'}
+                    - 重启服务：${params.RESTART_SERVICE ? '是' : '否'}
+                    
+                    ⚠️  注意事项：
+                    ${params.DEPLOY_ENV == 'production' ? '- 这是生产环境部署，请谨慎操作！' : '- 这是测试环境部署'}
+                    - 部署前请确认构建产物已准备就绪
+                    - 建议在非业务高峰期进行部署
+                    """
+                    
+                    // 生产环境需要额外确认
+                    if (params.DEPLOY_ENV == 'production') {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            def confirm = input(
+                                message: '⚠️ 确认部署到生产环境？',
+                                ok: '确认部署',
+                                parameters: [
+                                    choice(
+                                        choices: ['确认部署', '取消部署'],
+                                        description: '请再次确认是否部署到生产环境',
+                                        name: 'FINAL_CONFIRM'
+                                    )
+                                ],
+                                submitterParameter: 'DEPLOYER'
+                            )
+                            
+                            if (confirm.FINAL_CONFIRM == '取消部署') {
+                                error('用户取消了生产环境部署')
+                            }
+                            
+                            env.DEPLOYER_USER = confirm.DEPLOYER
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('获取构建产物') {
+            steps {
+                script {
+                    echo '正在获取构建产物...'
+                    
+                    def buildJob = 'praiseStar_frontend'
+                    def buildNumber = params.BUILD_NUMBER_TO_DEPLOY ?: 'lastSuccessfulBuild'
+                    
+                    try {
+                        // 从构建任务中复制产物
+                        // 注意：需要安装 Copy Artifact Plugin
+                        if (buildNumber == 'lastSuccessfulBuild') {
+                            copyArtifacts(
+                                projectName: buildJob,
+                                selector: lastSuccessful(),
+                                filter: '*.zip',
+                                fingerprintArtifacts: true
+                            )
+                        } else {
+                            // 如果没有Copy Artifact Plugin，使用手动方式
+                            echo "警告：Copy Artifact Plugin未安装，请手动下载构建产物"
+                            echo "请从以下位置下载构建产物："
+                            echo "Jenkins构建任务: ${buildJob}"
+                            echo "构建号: ${buildNumber}"
+                            echo "然后将zip文件放入当前工作目录"
+                            
+                            // 检查是否有手动上传的文件
+                            bat '''
+                                echo === 检查手动上传的构建产物 ===
+                                if exist *.zip (
+                                    echo 找到zip文件:
+                                    dir *.zip
+                                ) else (
+                                    echo 错误：未找到构建产物zip文件
+                                    echo 请手动将构建产物上传到此目录
+                                    echo 或者安装 Copy Artifact Plugin
+                                    exit 1
+                                )
+                            '''
+                        }
+                        
+                        bat '''
+                            echo === 检查下载的构建产物 ===
+                            if exist *.zip (
+                                echo 构建产物下载成功:
+                                dir *.zip
+                                
+                                echo === 解压构建产物 ===
+                                for %%f in (*.zip) do (
+                                    echo 解压文件: %%f
+                                    powershell -Command "Expand-Archive -Path '%%f' -DestinationPath 'deploy-temp' -Force"
+                                )
+                                
+                                echo === 验证解压结果 ===
+                                if exist deploy-temp (
+                                    echo 解压成功，内容:
+                                    dir deploy-temp /s
+                                ) else (
+                                    echo 解压失败
+                                    exit 1
+                                )
+                            ) else (
+                                echo 错误: 没有找到构建产物
+                                exit 1
+                            )
+                        '''
+                    } catch (Exception e) {
+                        error("获取构建产物失败: ${e.getMessage()}")
+                    }
+                }
+            }
+        }
+        
+        stage('SCP自动部署') {
+            when {
+                expression { params.DEPLOY_METHOD == 'scp' }
+            }
+            steps {
+                script {
+                    echo '开始SCP自动部署...'
+                    
+                    if (isUnix()) {
+                        // Linux环境的部署脚本
+                        sh """
+                            echo "=== SCP部署到${params.DEPLOY_ENV}环境 ==="
+                            
+                            # 备份当前版本
+                            if [ "${params.BACKUP_CURRENT}" == "true" ]; then
+                                echo "备份当前版本..."
+                                ssh ${env.DEPLOY_USER}@${env.DEPLOY_SERVER} "
+                                    if [ -d '${env.DEPLOY_PATH}' ]; then
+                                        sudo cp -r ${env.DEPLOY_PATH} ${env.DEPLOY_PATH}_backup_\$(date +%Y%m%d_%H%M%S)
+                                        echo '备份完成'
+                                    fi
+                                "
+                            fi
+                            
+                            # 上传文件
+                            echo "上传文件到服务器..."
+                            rsync -avz --delete deploy-temp/ ${env.DEPLOY_USER}@${env.DEPLOY_SERVER}:${env.DEPLOY_PATH}/
+                            
+                            # 设置权限和重启服务
+                            ssh ${env.DEPLOY_USER}@${env.DEPLOY_SERVER} "
+                                sudo chown -R nginx:nginx ${env.DEPLOY_PATH}
+                                sudo chmod -R 644 ${env.DEPLOY_PATH}
+                                sudo find ${env.DEPLOY_PATH} -type d -exec chmod 755 {} +
+                                
+                                if [ '${params.RESTART_SERVICE}' == 'true' ]; then
+                                    sudo systemctl reload nginx
+                                    echo 'Web服务已重启'
+                                fi
+                                
+                                echo '部署完成！'
+                            "
+                        """
+                    } else {
+                        // Windows环境提供部署脚本
+                        bat '''
+                            echo === 生成SCP部署脚本 ===
+                            (
+                                echo @echo off
+                                echo echo 开始SCP部署...
+                                echo echo.
+                                echo echo 目标服务器: %DEPLOY_SERVER%
+                                echo echo 部署路径: %DEPLOY_PATH%
+                                echo echo 部署用户: %DEPLOY_USER%
+                                echo echo.
+                                echo if "%BACKUP_CURRENT%"=="true" ^(
+                                echo     echo 备份当前版本...
+                                echo     ssh %DEPLOY_USER%@%DEPLOY_SERVER% "sudo cp -r %DEPLOY_PATH% %DEPLOY_PATH%_backup_$(date +%%%%Y%%%%m%%%%d_%%%%H%%%%M%%%%S)"
+                                echo ^)
+                                echo.
+                                echo echo 上传文件...
+                                echo scp -r deploy-temp/* %DEPLOY_USER%@%DEPLOY_SERVER%:%DEPLOY_PATH%/
+                                echo.
+                                echo if "%RESTART_SERVICE%"=="true" ^(
+                                echo     echo 重启Web服务...
+                                echo     ssh %DEPLOY_USER%@%DEPLOY_SERVER% "sudo systemctl reload nginx"
+                                echo ^)
+                                echo.
+                                echo echo 部署完成！
+                                echo echo 访问地址: http://%DEPLOY_SERVER%
+                            ) > scp-deploy.bat
+                            
+                            echo SCP部署脚本已生成: scp-deploy.bat
+                            echo 请在有SSH访问权限的环境中执行此脚本
+                            type scp-deploy.bat
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('手动部署准备') {
+            when {
+                expression { params.DEPLOY_METHOD == 'manual' }
+            }
+            steps {
+                script {
+                    echo '准备手动部署包和说明...'
+                    
+                    bat '''
+                        echo === 打包部署文件 ===
+                        set DEPLOY_PACKAGE_NAME=praisestar-deploy-%BUILD_NUMBER%-%DEPLOY_ENV%.zip
+                        
+                        if exist deploy-temp (
+                            powershell -Command "Compress-Archive -Path 'deploy-temp\\*' -DestinationPath '%DEPLOY_PACKAGE_NAME%' -Force"
+                            echo 部署包已生成: %DEPLOY_PACKAGE_NAME%
+                        ) else (
+                            echo 错误: deploy-temp目录不存在
+                            exit 1
+                        )
+                        
+                        echo === 生成手动部署说明 ===
+                        (
+                            echo 手动部署说明文档
+                            echo ====================
+                            echo.
+                            echo 部署信息:
+                            echo - 环境: %DEPLOY_ENV%
+                            echo - 服务器: %DEPLOY_SERVER%
+                            echo - 路径: %DEPLOY_PATH%
+                            echo - 用户: %DEPLOY_USER%
+                            echo - 构建号: %BUILD_NUMBER%
+                            echo - 部署时间: %date% %time%
+                            echo.
+                            echo 部署步骤:
+                            echo 1. 下载部署包: %DEPLOY_PACKAGE_NAME%
+                            echo 2. 上传到服务器临时目录
+                            echo 3. 在服务器上执行以下命令:
+                            echo.
+                            echo    # 备份当前版本 (可选)
+                            if "%BACKUP_CURRENT%"=="true" echo    sudo cp -r %DEPLOY_PATH% %DEPLOY_PATH%_backup_$(date +%%%%Y%%%%m%%%%d_%%%%H%%%%M%%%%S)
+                            echo.
+                            echo    # 解压新版本
+                            echo    unzip -o %DEPLOY_PACKAGE_NAME% -d %DEPLOY_PATH%/
+                            echo.
+                            echo    # 设置权限
+                            echo    sudo chown -R nginx:nginx %DEPLOY_PATH%
+                            echo    sudo chmod -R 644 %DEPLOY_PATH%
+                            echo    sudo find %DEPLOY_PATH% -type d -exec chmod 755 {} +
+                            echo.
+                            echo    # 重启Web服务 (可选)
+                            if "%RESTART_SERVICE%"=="true" echo    sudo systemctl reload nginx
+                            echo.
+                            echo 4. 验证部署结果:
+                            echo    访问 http://%DEPLOY_SERVER% 检查应用是否正常
+                            echo.
+                            echo 回滚方法:
+                            echo    如果部署有问题，可以使用备份快速回滚:
+                            echo    sudo cp -r %DEPLOY_PATH%_backup_* %DEPLOY_PATH%
+                            echo    sudo systemctl reload nginx
+                            echo.
+                        ) > manual-deploy-guide.txt
+                        
+                        echo 手动部署说明已生成
+                        type manual-deploy-guide.txt
+                    '''
+                    
+                    // 归档部署包和说明文档
+                    archiveArtifacts artifacts: 'praisestar-deploy-*.zip,manual-deploy-guide.txt', fingerprint: true
+                }
+            }
+        }
+        
+        stage('部署验证') {
+            steps {
+                script {
+                    echo '验证部署结果...'
+                    
+                    if (params.DEPLOY_METHOD == 'scp' && isUnix()) {
+                        sh """
+                            echo "=== 验证部署结果 ==="
+                            
+                            # 检查服务器上的文件
+                            echo "检查部署文件..."
+                            ssh ${env.DEPLOY_USER}@${env.DEPLOY_SERVER} "
+                                if [ -d '${env.DEPLOY_PATH}' ]; then
+                                    echo '部署目录存在'
+                                    ls -la ${env.DEPLOY_PATH}/
+                                    if [ -f '${env.DEPLOY_PATH}/index.html' ]; then
+                                        echo '主页文件存在'
+                                    else
+                                        echo '警告: 主页文件不存在'
+                                    fi
+                                else
+                                    echo '错误: 部署目录不存在'
+                                    exit 1
+                                fi
+                            "
+                            
+                            # 检查Web服务状态
+                            if [ "${params.RESTART_SERVICE}" == "true" ]; then
+                                echo "检查Web服务状态..."
+                                ssh ${env.DEPLOY_USER}@${env.DEPLOY_SERVER} "
+                                    sudo systemctl status nginx --no-pager -l
+                                "
+                            fi
+                            
+                            echo "部署验证完成"
+                        """
+                    } else {
+                        bat '''
+                            echo === 部署验证说明 ===
+                            echo 请手动执行以下验证步骤:
+                            echo.
+                            echo 1. 访问应用地址: http://%DEPLOY_SERVER%
+                            echo 2. 检查页面是否正常加载
+                            echo 3. 测试主要功能是否正常
+                            echo 4. 检查浏览器控制台是否有错误
+                            echo.
+                            echo 如果发现问题，请及时回滚到备份版本
+                        '''
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            script {
+                node {
+                    echo '清理部署环境...'
+                    bat '''
+                        echo === 清理临时文件 ===
+                        if exist deploy-temp rmdir /s /q deploy-temp
+                        if exist *.zip del *.zip
+                        if exist scp-deploy.bat del scp-deploy.bat
+                        echo 清理完成
+                    '''
+                    cleanWs()
+                }
+            }
+        }
+        success {
+            echo '✅ 部署成功！'
+            script {
+                def message = """
+🎉 PraiseStar前端部署成功！
+
+📋 部署信息：
+- 目标环境：${params.DEPLOY_ENV}
+- 目标服务器：${env.DEPLOY_SERVER}
+- 部署方式：${params.DEPLOY_METHOD}
+- 构建号：${params.BUILD_NUMBER_TO_DEPLOY ?: '最新构建'}
+- 部署时间：${new Date()}
+${env.DEPLOYER_USER ? "- 部署执行人：${env.DEPLOYER_USER}" : ""}
+
+🚀 验证步骤：
+1. 访问地址：http://${env.DEPLOY_SERVER}
+2. 检查应用功能是否正常
+3. 验证用户登录和主要业务流程
+
+📊 监控建议：
+- 观察服务器性能指标
+- 检查错误日志
+- 关注用户反馈
+
+🔧 如遇问题：
+- 可使用备份快速回滚
+- 联系开发团队获取支持
+- 查看部署日志排查问题
+"""
+                echo message
+            }
+        }
+        failure {
+            echo '❌ 部署失败！'
+            script {
+                def message = """
+💥 PraiseStar前端部署失败！
+
+📋 失败信息：
+- 目标环境：${params.DEPLOY_ENV}
+- 目标服务器：${env.DEPLOY_SERVER}
+- 失败时间：${new Date()}
+
+🔍 常见问题排查：
+1. 检查构建产物是否存在
+2. 验证服务器连接和权限
+3. 确认目标路径是否正确
+4. 检查服务器磁盘空间
+
+🛠️ 解决建议：
+- 查看详细日志：${env.BUILD_URL}console
+- 检查服务器连接状态
+- 验证SSH密钥和权限配置
+- 联系运维团队获取支持
+
+⚠️ 重要提醒：
+- 如果是生产环境，请尽快恢复服务
+- 可考虑使用备份版本临时恢复
+- 记录问题详情，便于后续分析
+"""
+                echo message
+            }
+        }
+    }
+}
