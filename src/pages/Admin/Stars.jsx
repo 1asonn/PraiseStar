@@ -385,8 +385,8 @@ const AdminStars = () => {
       render: (users) => (
         <div>
           {users && users.length > 0 ? (
-            users.map((user, index) => (
-              <Tag key={index} color="geekblue" style={{ marginBottom: 4 }}>
+            users.map((user) => (
+              <Tag key={user.id || user.name} color="geekblue" style={{ marginBottom: 4 }}>
                 {user.name} ({user.department})
               </Tag>
             ))
@@ -441,8 +441,8 @@ const AdminStars = () => {
             <Text strong style={{ fontSize: 12, color: '#666' }}>适用人员: </Text>
             {record.users && record.users.length > 0 ? (
               <div style={{ marginTop: 4 }}>
-                {record.users.map((user, index) => (
-                  <Tag key={index} color="geekblue" size="small" style={{ marginBottom: 4 }}>
+                {record.users.map((user) => (
+                  <Tag key={user.id || user.name} color="geekblue" size="small" style={{ marginBottom: 4 }}>
                     {user.name}
                   </Tag>
                 ))}

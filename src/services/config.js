@@ -3,8 +3,8 @@
 // API基础配置
 export const API_CONFIG = {
   // 基础URL - 根据环境自动切换
-  // BASE_URL: 'http://39.105.117.48:3000/api',     // 生产API地址
-  BASE_URL: 'http://localhost:3000/api',     // 开发API地址
+  BASE_URL: 'http://39.105.117.48:3000/api',     // 生产API地址
+  // BASE_URL: 'http://localhost:3000/api',     // 开发API地址
   
   // 请求超时时间（毫秒）
   TIMEOUT: 10000,
@@ -96,7 +96,10 @@ export const API_ENDPOINTS = {
     ADJUST_STARS: (id) => `/users/${id}/adjust-stars`,
     DEPARTMENTS: '/users/departments',
     STATISTICS: '/users/statistics',
-    EXPORT: '/users/export'
+    EXPORT: '/users/export',
+    IMPORT_TEMPLATE: '/user-data/import-template',
+    VALIDATE_IMPORT: '/user-data/validate-import',
+    IMPORT: '/user-data/import'
   },
   
   // 赞赞星管理

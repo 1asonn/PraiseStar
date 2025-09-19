@@ -16,7 +16,10 @@ import {
   Steps,
   Modal,
   Descriptions,
-  Spin
+  Spin,
+  Switch,
+  Input,
+  Form
 } from 'antd'
 import {
   UploadOutlined,
@@ -27,8 +30,7 @@ import {
   InfoCircleOutlined,
   InboxOutlined
 } from '@ant-design/icons'
-import axios from 'axios'
-import apiClient from '../../services/apiClient'
+import { userService } from '../../services/userService'
 
 const { Title, Text, Paragraph } = Typography
 const { Dragger } = Upload
@@ -50,55 +52,31 @@ const ImportCenter = () => {
   // 下载导入模板
   const downloadTemplate = async () => {
     try {
-      const token = localStorage.getItem('token')
-      // 直接使用axios实例，完全绕过响应拦截器
-      // 创建一个临时的axios实例，不包含拦截器
-      const tempAxios = axios.create({
-        baseURL: apiClient.defaults.baseURL,
-        timeout: 10000,
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
+      const blob = await userService.downloadImportTemplate()
       
-      // 添加认证token
-      tempAxios.defaults.headers.Authorization = `Bearer ${token}`
-      
-      const response = await tempAxios.request({
-        method: 'GET',
-        url: `/user-data/import-template?_t=${Date.now()}`,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        },
-        responseType: 'blob'
-      })
-      
-      console.log('模板下载响应:', response)
-      console.log('模板响应数据:', response.data)
+      console.log('模板下载响应:', blob)
+      console.log('模板响应数据:', blob)
       
       // 检查响应数据 - 修复Blob类型检查
-      if (response.data === undefined || response.data === null) {
+      if (blob === undefined || blob === null) {
         throw new Error('服务器返回空数据')
       }
       
       // 对于Blob类型，检查size属性
-      if (response.data instanceof Blob && response.data.size === 0) {
+      if (blob instanceof Blob && blob.size === 0) {
         throw new Error('服务器返回空文件')
       }
       
-      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8' })
+      const csvBlob = new Blob([blob], { type: 'text/csv;charset=utf-8' })
       
-      console.log('创建的模板blob:', blob)
-      console.log('模板blob大小:', blob.size)
+      console.log('创建的模板blob:', csvBlob)
+      console.log('模板blob大小:', csvBlob.size)
       
-      if (blob.size === 0) {
+      if (csvBlob.size === 0) {
         throw new Error('生成的模板文件为空')
       }
       
-      const url = window.URL.createObjectURL(blob)
+      const url = window.URL.createObjectURL(csvBlob)
       const link = document.createElement('a')
       link.href = url
       link.download = `user_import_template_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`
@@ -120,21 +98,16 @@ const ImportCenter = () => {
     setCurrentStep(1)
     
     try {
-      const formData = new FormData()
-      formData.append('file', file)
+      const response = await userService.validateImportFile(file)
       
-      const response = await apiClient.post('/user-data/validate-import', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      })
+      console.log('验证响应:', response)
       
-      if (response.data.success) {
-        setValidationResult(response.data.data)
+      if (response.success) {
+        setValidationResult(response.data)
         setCurrentStep(2)
         message.success('文件验证完成')
       } else {
-        message.error(response.data.message || '文件验证失败')
+        message.error(response.message || '文件验证失败')
       }
     } catch (error) {
       console.error('验证文件失败:', error)
@@ -155,24 +128,20 @@ const ImportCenter = () => {
     setCurrentStep(3)
     
     try {
-      const formData = new FormData()
-      formData.append('file', fileList[0])
-      formData.append('updateExisting', importSettings.updateExisting)
-      formData.append('defaultPassword', importSettings.defaultPassword)
-      
-      const response = await apiClient.post('/user-data/import', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+      const response = await userService.importUsers(fileList[0], {
+        updateExisting: importSettings.updateExisting,
+        defaultPassword: importSettings.defaultPassword
       })
       
-      if (response.data.success) {
-        setImportResult(response.data.data)
+      console.log('导入响应:', response)
+      
+      if (response.success) {
+        setImportResult(response.data)
         setCurrentStep(4)
         message.success('数据导入完成')
         setImportModalVisible(false)
       } else {
-        message.error(response.data.message || '数据导入失败')
+        message.error(response.message || '数据导入失败')
       }
     } catch (error) {
       console.error('导入数据失败:', error)
@@ -379,6 +348,7 @@ const ImportCenter = () => {
                     <Table
                       columns={validationColumns}
                       dataSource={validationResult.sampleData}
+                      rowKey={(record, index) => `validation-${index}`}
                       pagination={false}
                       size="small"
                     />
@@ -407,11 +377,11 @@ const ImportCenter = () => {
                   <Table
                     columns={importResultColumns}
                     dataSource={[
-                      { label: '总记录数', value: importResult.total, type: 'info' },
-                      { label: '成功导入', value: importResult.success, type: 'success' },
-                      { label: '导入失败', value: importResult.failed, type: 'error' },
-                      { label: '新建用户', value: importResult.created, type: 'success' },
-                      { label: '更新用户', value: importResult.updated, type: 'success' }
+                      { key: 'total', label: '总记录数', value: importResult.total, type: 'info' },
+                      { key: 'success', label: '成功导入', value: importResult.success, type: 'success' },
+                      { key: 'failed', label: '导入失败', value: importResult.failed, type: 'error' },
+                      { key: 'created', label: '新建用户', value: importResult.created, type: 'success' },
+                      { key: 'updated', label: '更新用户', value: importResult.updated, type: 'success' }
                     ]}
                     pagination={false}
                     size="small"
@@ -449,23 +419,54 @@ const ImportCenter = () => {
         confirmLoading={uploading}
         okText="开始导入"
         cancelText="取消"
+        width={500}
       >
-        <Descriptions column={1} size="small">
-          <Descriptions.Item label="更新已存在用户">
-            <Tag color={importSettings.updateExisting ? 'green' : 'red'}>
-              {importSettings.updateExisting ? '是' : '否'}
-            </Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label="默认密码">
-            {importSettings.defaultPassword}
-          </Descriptions.Item>
-        </Descriptions>
+        <Form layout="vertical">
+          <Form.Item label="更新已存在用户">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Switch
+                checked={importSettings.updateExisting}
+                onChange={(checked) => setImportSettings(prev => ({
+                  ...prev,
+                  updateExisting: checked
+                }))}
+              />
+              <span style={{ color: '#666' }}>
+                {importSettings.updateExisting ? '是' : '否'}
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
+              开启后，如果用户已存在，将更新其信息；关闭后，将跳过已存在的用户
+            </div>
+          </Form.Item>
+          
+          <Form.Item label="默认密码">
+            <Input
+              value={importSettings.defaultPassword}
+              onChange={(e) => setImportSettings(prev => ({
+                ...prev,
+                defaultPassword: e.target.value
+              }))}
+              placeholder="请输入默认密码"
+              style={{ width: '100%' }}
+            />
+            <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
+              新用户的初始密码，建议使用强密码
+            </div>
+          </Form.Item>
+        </Form>
         
         <Divider />
         
         <Alert
           message="导入说明"
-          description="导入过程中会创建新用户或更新已存在的用户信息，请确认配置无误后开始导入。"
+          description={
+            <div>
+              <p>• 导入过程中会创建新用户或更新已存在的用户信息</p>
+              <p>• 请确认配置无误后开始导入</p>
+              <p>• 建议先下载模板，按照模板格式填写数据</p>
+            </div>
+          }
           type="info"
           showIcon
         />

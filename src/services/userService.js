@@ -378,6 +378,68 @@ export const userService = {
   },
 
   /**
+   * 执行用户数据导入
+   * @param {File} file - CSV文件
+   * @param {Object} options - 导入选项
+   * @param {boolean} options.updateExisting - 是否更新已存在用户
+   * @param {string} options.defaultPassword - 默认密码
+   * @returns {Promise} 导入结果
+   */
+  importUsers: async (file, options = {}) => {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('updateExisting', options.updateExisting || false)
+      formData.append('defaultPassword', options.defaultPassword || '123456')
+
+      // 调试信息
+      console.log('Import FormData contents:')
+      for (let [key, value] of formData.entries()) {
+        console.log(key, value)
+      }
+
+      // 使用原生axios实例，避免apiClient的默认配置干扰
+      const token = localStorage.getItem('token')
+      const response = await axios.post(`${API_CONFIG.BASE_URL}/user-data/import`, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          // 不设置Content-Type，让浏览器自动设置multipart/form-data with boundary
+        }
+      })
+      
+      console.log('Import Response:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('导入用户数据失败:', error)
+      throw error
+    }
+  },
+
+  /**
+   * 下载导入模板
+   * @returns {Promise} 模板文件
+   */
+  downloadImportTemplate: async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await axios.get(`${API_CONFIG.BASE_URL}/user-data/import-template`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        responseType: 'blob'
+      })
+      
+      return response.data
+    } catch (error) {
+      console.error('下载导入模板失败:', error)
+      throw error
+    }
+  },
+
+  /**
    * 获取赞赞星统计数据
    * @returns {Promise} 统计数据
    */
