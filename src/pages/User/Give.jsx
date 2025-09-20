@@ -29,6 +29,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext'
 import { giveReasonAPI } from '../../services/apiClient'
 import { starsService } from '../../services/starsService'
+import { userService } from '../../services/userService'
 
 const { Option } = Select
 const { TextArea } = Input
@@ -56,7 +57,21 @@ const Give = () => {
   const [giveReasons, setGiveReasons] = useState([])
   const [loadingReasons, setLoadingReasons] = useState(false)
   const [formValues, setFormValues] = useState({})
-  const { user, refreshUser } = useAuth()
+  const { user, refreshUser, updateUser } = useAuth()
+
+  // 刷新用户信息 - 获取最新的统计数据
+  const refreshUserInfo = async () => {
+    try {
+      const response = await userService.getProfile()
+      if (response.success) {
+        updateUser(response.data)
+      }
+    } catch (error) {
+      console.error('获取用户信息失败:', error)
+      // 如果获取失败，回退到原来的refreshUser方法
+      await refreshUser()
+    }
+  }
 
   // 获取可用用户列表
   const fetchAvailableUsers = async () => {
@@ -150,6 +165,14 @@ const Give = () => {
       const response = await starsService.giveStars(giveData)
       
       if (response.success) {
+        // 如果后端返回了最新的用户信息，直接使用它
+        if (response.data && response.data.user) {
+          updateUser(response.data.user)
+        } else {
+          // 否则获取最新的用户信息
+          await refreshUserInfo()
+        }
+        
         Modal.success({
           title: '赠送成功！',
           content: (
@@ -162,10 +185,8 @@ const Give = () => {
           onOk: async () => {
             form.resetFields()
             setSelectedUser(null)
-            // 刷新用户信息和可用用户列表
+            // 刷新可用用户列表
             await fetchAvailableUsers()
-            // 刷新当前用户信息
-            await refreshUser()
           }
         })
         

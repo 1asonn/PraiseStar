@@ -171,20 +171,20 @@ const AdminBulletScreen = () => {
     }
   }
 
-  // 删除飞书配置
-  const handleDeleteConfig = async (id) => {
+  // 切换飞书配置启用状态
+  const handleToggleConfigStatus = async (id, currentStatus) => {
     try {
       setLoading(true)
-      const response = await feishuConfigAPI.deleteConfig(id)
+      const response = await feishuConfigAPI.updateConfig(id, { is_active: !currentStatus })
       if (response.success) {
-        message.success('删除成功')
+        message.success(currentStatus ? '配置已禁用' : '配置已启用')
         loadFeishuConfigs() // 重新加载列表
       } else {
-        message.error(response.message || '删除失败')
+        message.error(response.message || '状态更新失败')
       }
     } catch (error) {
-      console.error('删除飞书配置失败:', error)
-      message.error('删除失败')
+      console.error('更新配置状态失败:', error)
+      message.error('状态更新失败')
     } finally {
       setLoading(false)
     }
@@ -261,33 +261,6 @@ const AdminBulletScreen = () => {
     }
   }
 
-  const handleDeleteStarGiveConfig = async (id) => {
-    try {
-      const token = localStorage.getItem('token')
-      
-      const tempAxios = axios.create({
-        baseURL: apiClient.defaults.baseURL,
-        timeout: 10000,
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
-      
-      tempAxios.defaults.headers.Authorization = `Bearer ${token}`
-      
-      const response = await tempAxios.delete(`/star-give-feishu/config/${id}`)
-      
-      if (response.data.success) {
-        message.success('配置删除成功')
-        loadStarGiveConfigs()
-      } else {
-        message.error(response.data.message || '删除配置失败')
-      }
-    } catch (error) {
-      console.error('删除赞赞星配置失败:', error)
-      message.error('删除配置失败')
-    }
-  }
 
   const handleOpenTestModal = (config) => {
     setTestConfig(config)
@@ -377,9 +350,25 @@ const AdminBulletScreen = () => {
       )
     },
     {
+      title: '状态',
+      dataIndex: 'is_active',
+      key: 'is_active',
+      width: 100,
+      align: 'center',
+      render: (isActive, record) => (
+        <Switch
+          checked={isActive}
+          onChange={(checked) => handleToggleConfigStatus(record.id, !checked)}
+          loading={loading}
+          checkedChildren="启用"
+          unCheckedChildren="禁用"
+        />
+      )
+    },
+    {
       title: '操作',
       key: 'actions',
-      width: 120,
+      width: 150,
       fixed: 'right',
       render: (_, record) => (
         <Space size="small">
@@ -389,6 +378,7 @@ const AdminBulletScreen = () => {
               size="small"
               loading={testingThreshold === record.threshold}
               onClick={() => handleTestNotification(record.threshold)}
+              disabled={!record.is_active}
             >
               测试
             </Button>
@@ -400,20 +390,6 @@ const AdminBulletScreen = () => {
               onClick={() => handleOpenModal(record)}
             />
           </Tooltip>
-          <Popconfirm
-            title="确定删除？"
-            onConfirm={() => handleDeleteConfig(record.id)}
-            okText="确定"
-            cancelText="取消"
-          >
-            <Tooltip title="删除">
-              <Button
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-              />
-            </Tooltip>
-          </Popconfirm>
         </Space>
       )
     }
@@ -449,12 +425,24 @@ const AdminBulletScreen = () => {
               }
             </Text>
           </div>
+          <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text strong style={{ fontSize: 12, color: '#666' }}>状态: </Text>
+            <Switch
+              checked={record.is_active}
+              onChange={(checked) => handleToggleConfigStatus(record.id, !checked)}
+              loading={loading}
+              size="small"
+              checkedChildren="启用"
+              unCheckedChildren="禁用"
+            />
+          </div>
           <Space size="small">
             <Button
               type="primary"
               size="small"
               loading={testingThreshold === record.threshold}
               onClick={() => handleTestNotification(record.threshold)}
+              disabled={!record.is_active}
             >
               测试
             </Button>
@@ -465,20 +453,6 @@ const AdminBulletScreen = () => {
             >
               编辑
             </Button>
-            <Popconfirm
-              title="确定删除这个配置吗？"
-              onConfirm={() => handleDeleteConfig(record.id)}
-              okText="确定"
-              cancelText="取消"
-            >
-              <Button
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-              >
-                删除
-              </Button>
-            </Popconfirm>
           </Space>
         </div>
       )
@@ -487,112 +461,6 @@ const AdminBulletScreen = () => {
 
   const feishuConfigColumns = isMobile ? mobileColumns : desktopColumns
 
-  // 赞赞星赠送飞书通知配置表格列定义
-  const starGiveColumns = [
-    {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 80,
-      align: 'center'
-    },
-    {
-      title: '模板ID',
-      dataIndex: 'template_id',
-      key: 'template_id',
-      width: 150,
-      render: (templateId) => (
-        <Tag color="blue">{templateId}</Tag>
-      )
-    },
-    {
-      title: '模板版本',
-      dataIndex: 'template_version',
-      key: 'template_version',
-      width: 120,
-      render: (version) => version || '-'
-    },
-    {
-      title: 'Webhook URL',
-      dataIndex: 'webhook_url',
-      key: 'webhook_url',
-      ellipsis: true,
-      render: (url) => (
-        <Tooltip title={url}>
-          <Text code style={{ fontSize: '12px' }}>
-            {url.length > 30 ? `${url.substring(0, 30)}...` : url}
-          </Text>
-        </Tooltip>
-      )
-    },
-    {
-      title: '描述',
-      dataIndex: 'description',
-      key: 'description',
-      ellipsis: true,
-      render: (description) => description || '-'
-    },
-    {
-      title: '状态',
-      dataIndex: 'is_active',
-      key: 'is_active',
-      width: 100,
-      align: 'center',
-      render: (isActive) => (
-        <Tag color={isActive ? 'green' : 'red'} icon={isActive ? <CheckCircleOutlined /> : <CloseCircleOutlined />}>
-          {isActive ? '启用' : '禁用'}
-        </Tag>
-      )
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      width: 150,
-      render: (date) => new Date(date).toLocaleString('zh-CN')
-    },
-    {
-      title: '操作',
-      key: 'actions',
-      width: 200,
-      render: (_, record) => (
-        <Space>
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleOpenStarGiveModal(record)}
-            size="small"
-          >
-            编辑
-          </Button>
-          <Button
-            type="link"
-            icon={<SendOutlined />}
-            onClick={() => handleOpenTestModal(record)}
-            size="small"
-            disabled={!record.is_active}
-          >
-            测试
-          </Button>
-          <Popconfirm
-            title="确定要删除这个配置吗？"
-            onConfirm={() => handleDeleteStarGiveConfig(record.id)}
-            okText="确定"
-            cancelText="取消"
-          >
-            <Button
-              type="link"
-              danger
-              icon={<DeleteOutlined />}
-              size="small"
-            >
-              删除
-            </Button>
-          </Popconfirm>
-        </Space>
-      )
-    }
-  ]
 
   return (
     <div>
@@ -709,13 +577,13 @@ const AdminBulletScreen = () => {
                         fontWeight: 'bold', 
                         color: '#52c41a' 
                       }}>
-                        {feishuConfigs.filter(config => config.is_active).length}
+                        {feishuConfigs.filter(config => config.is_active !== false).length}
                       </div>
                       <div style={{ 
                         fontSize: isMobile ? 12 : 14, 
                         color: '#666' 
                       }}>
-                        激活配置
+                        启用配置
                       </div>
                     </div>
                   </Col>
@@ -724,17 +592,17 @@ const AdminBulletScreen = () => {
                       <div style={{ 
                         fontSize: isMobile ? 24 : 32, 
                         fontWeight: 'bold', 
-                        color: '#fa8c16' 
+                        color: '#ff4d4f' 
                       }}>
-                        {feishuConfigs.length > 0 ? Math.min(...feishuConfigs.map(c => c.threshold)) : '-'}
+                        {feishuConfigs.filter(config => config.is_active === false).length}
                       </div>
                       <div style={{ 
                         fontSize: isMobile ? 12 : 14, 
                         color: '#666' 
                       }}>
-                        最低阈值
+                        禁用配置
                       </div>
-                </div>
+                    </div>
                   </Col>
                 </Row>
           </Card>
@@ -754,8 +622,8 @@ const AdminBulletScreen = () => {
                       <li>支持配置多个阈值，每个阈值对应不同的飞书群</li>
                       <li>当用户累计获得赞赞星达到某个阈值时，会自动发送飞书通知</li>
                       <li>可以为每个阈值配置不同的消息模板和Webhook</li>
-                      <li>支持测试功能，确保配置正确可用</li>
-                      <li>配置支持实时编辑和删除，灵活管理</li>
+                      <li>支持测试功能，确保配置正确可用（仅启用配置可测试）</li>
+                      <li>配置支持实时编辑和启用/禁用切换，灵活管理</li>
                 </ul>
               }
               type="info"
@@ -778,64 +646,138 @@ const AdminBulletScreen = () => {
             ),
             children: (
               <Row gutter={[16, 16]}>
-                {/* 统计概览 */}
+                {/* 配置状态概览 */}
                 <Col xs={24}>
                   <Card>
                     <Row gutter={16}>
-                      <Col span={8}>
+                      <Col span={12}>
                         <Statistic
-                          title="总配置数"
-                          value={starGiveConfigs.length}
-                          prefix={<SettingOutlined />}
-                          valueStyle={{ color: '#1890ff' }}
+                          title="配置状态"
+                          value={starGiveConfigs.length > 0 ? (starGiveConfigs[0].is_active ? '已启用' : '已禁用') : '未配置'}
+                          prefix={starGiveConfigs.length > 0 ? (starGiveConfigs[0].is_active ? <CheckCircleOutlined /> : <CloseCircleOutlined />) : <SettingOutlined />}
+                          valueStyle={{ 
+                            color: starGiveConfigs.length > 0 ? (starGiveConfigs[0].is_active ? '#52c41a' : '#ff4d4f') : '#1890ff' 
+                          }}
                         />
                       </Col>
-                      <Col span={8}>
+                      <Col span={12}>
                         <Statistic
-                          title="启用配置"
-                          value={starGiveConfigs.filter(config => config.is_active).length}
-                          prefix={<CheckCircleOutlined />}
-                          valueStyle={{ color: '#52c41a' }}
-                        />
-                      </Col>
-                      <Col span={8}>
-                        <Statistic
-                          title="禁用配置"
-                          value={starGiveConfigs.filter(config => !config.is_active).length}
-                          prefix={<CloseCircleOutlined />}
-                          valueStyle={{ color: '#ff4d4f' }}
+                          title="最后更新"
+                          value={starGiveConfigs.length > 0 ? new Date(starGiveConfigs[0].updated_at || starGiveConfigs[0].created_at).toLocaleDateString('zh-CN') : '-'}
+                          prefix={<InfoCircleOutlined />}
+                          valueStyle={{ color: '#666' }}
                         />
                       </Col>
                     </Row>
                   </Card>
                 </Col>
 
-                {/* 配置列表 */}
+                {/* 配置展示 */}
                 <Col xs={24}>
                   <Card
                     title="赞赞星赠送飞书通知配置"
                     extra={
                       <Button
                         type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => handleOpenStarGiveModal()}
+                        icon={starGiveConfigs.length > 0 ? <EditOutlined /> : <PlusOutlined />}
+                        onClick={() => handleOpenStarGiveModal(starGiveConfigs.length > 0 ? starGiveConfigs[0] : null)}
                       >
-                        新增配置
+                        {starGiveConfigs.length > 0 ? '编辑配置' : '创建配置'}
                       </Button>
                     }
                   >
-                    <Table
-                      columns={starGiveColumns}
-                      dataSource={starGiveConfigs}
-                      rowKey="id"
-                      pagination={{
-                        showSizeChanger: true,
-                        showQuickJumper: true,
-                        showTotal: (total, range) => 
-                          `第 ${range[0]}-${range[1]} 条，共 ${total} 条记录`
-                      }}
-                      scroll={{ x: 1000 }}
-                    />
+                    {starGiveConfigs.length > 0 ? (
+                      <div style={{ padding: '16px 0' }}>
+                        <Row gutter={[16, 16]}>
+                          <Col xs={24} sm={12}>
+                            <div style={{ marginBottom: '12px' }}>
+                              <Text strong style={{ color: '#666' }}>模板ID：</Text>
+                              <Tag color="blue" style={{ marginLeft: '8px' }}>
+                                {starGiveConfigs[0].template_id}
+                              </Tag>
+                            </div>
+                            <div style={{ marginBottom: '12px' }}>
+                              <Text strong style={{ color: '#666' }}>模板版本：</Text>
+                              <Text style={{ marginLeft: '8px' }}>
+                                {starGiveConfigs[0].template_version || '-'}
+                              </Text>
+                            </div>
+                            <div style={{ marginBottom: '12px' }}>
+                              <Text strong style={{ color: '#666' }}>配置状态：</Text>
+                              <Tag 
+                                color={starGiveConfigs[0].is_active ? 'green' : 'red'} 
+                                icon={starGiveConfigs[0].is_active ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+                                style={{ marginLeft: '8px' }}
+                              >
+                                {starGiveConfigs[0].is_active ? '已启用' : '已禁用'}
+                              </Tag>
+                            </div>
+                          </Col>
+                          <Col xs={24} sm={12}>
+                            <div style={{ marginBottom: '12px' }}>
+                              <Text strong style={{ color: '#666' }}>Webhook URL：</Text>
+                              <Tooltip title={starGiveConfigs[0].webhook_url}>
+                                <Text code style={{ 
+                                  fontSize: '12px', 
+                                  marginLeft: '8px',
+                                  display: 'block',
+                                  wordBreak: 'break-all'
+                                }}>
+                                  {starGiveConfigs[0].webhook_url.length > 50 ? 
+                                    `${starGiveConfigs[0].webhook_url.substring(0, 50)}...` : 
+                                    starGiveConfigs[0].webhook_url
+                                  }
+                                </Text>
+                              </Tooltip>
+                            </div>
+                            <div style={{ marginBottom: '12px' }}>
+                              <Text strong style={{ color: '#666' }}>描述：</Text>
+                              <Text style={{ marginLeft: '8px' }}>
+                                {starGiveConfigs[0].description || '-'}
+                              </Text>
+                            </div>
+                            <div style={{ marginBottom: '12px' }}>
+                              <Text strong style={{ color: '#666' }}>最后更新：</Text>
+                              <Text style={{ marginLeft: '8px' }}>
+                                {new Date(starGiveConfigs[0].updated_at || starGiveConfigs[0].created_at).toLocaleString('zh-CN')}
+                              </Text>
+                            </div>
+                          </Col>
+                        </Row>
+                        <Divider />
+                        <div style={{ textAlign: 'center' }}>
+                          <Space>
+                            <Button
+                              icon={<EditOutlined />}
+                              onClick={() => handleOpenStarGiveModal(starGiveConfigs[0])}
+                            >
+                              编辑配置
+                            </Button>
+                            <Button
+                              icon={<SendOutlined />}
+                              onClick={() => handleOpenTestModal(starGiveConfigs[0])}
+                              disabled={!starGiveConfigs[0].is_active}
+                            >
+                              测试通知
+                            </Button>
+                          </Space>
+                        </div>
+                      </div>
+                    ) : (
+                      <Empty
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        description="暂无配置"
+                        style={{ margin: '40px 0' }}
+                      >
+                        <Button 
+                          type="primary" 
+                          icon={<PlusOutlined />}
+                          onClick={() => handleOpenStarGiveModal()}
+                        >
+                          立即创建
+                        </Button>
+                      </Empty>
+                    )}
                   </Card>
                 </Col>
 
@@ -846,7 +788,7 @@ const AdminBulletScreen = () => {
                     description={
                       <div>
                         <p>• 当用户赠送赞赞星时，系统会根据配置的模板发送飞书通知</p>
-                        <p>• 可以配置多个模板，系统会按顺序尝试发送</p>
+                        <p>• 系统只支持配置一条飞书通知模板</p>
                         <p>• 只有启用状态的配置才会生效</p>
                         <p>• 建议先测试配置是否正确，再启用使用</p>
                       </div>
