@@ -1,106 +1,30 @@
-name: 自动部署到服务器
+name: 自动部署
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     
     steps:
     - name: 检出代码
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
     
-    - name: 设置 Node.js 环境
+    - name: 设置 Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'npm'
     
     - name: 安装依赖
-      run: |
-        echo "正在安装依赖..."
-        npm ci
-    
-    - name: 运行代码检查
-      run: |
-        echo "运行代码质量检查..."
-        npm audit --audit-level=high || echo "安全检查完成（有警告）"
+      run: npm ci
     
     - name: 构建项目
-      run: |
-        echo "开始构建项目..."
-        npm run build
-        echo "构建完成，检查输出文件..."
-        ls -la dist/
-        echo "构建产物大小："
-        du -sh dist/
+      run: npm run build
     
-    - name: 创建部署包
-      run: |
-        echo "创建部署包..."
-        cd dist
-        tar -czf ../praisestar-build-$(date +%Y%m%d_%H%M%S).tar.gz .
-        cd ..
-        echo "部署包创建完成："
-        ls -lh *.tar.gz
-    
-    - name: 部署到服务器
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.DEPLOY_HOST }}
-        username: ${{ secrets.DEPLOY_USER }}
-        key: ${{ secrets.DEPLOY_SSH_KEY }}
-        port: ${{ secrets.DEPLOY_PORT || 22 }}
-        script: |
-          echo "开始部署到服务器..."
-          
-          # 设置部署路径
-          DEPLOY_PATH="/www/wwwroot/39.105.117.48"
-          BACKUP_PATH="/www/wwwroot/39.105.117.48/backup"
-          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-          
-          echo "当前用户: $(whoami)"
-          echo "当前目录: $(pwd)"
-          echo "部署路径: $DEPLOY_PATH"
-          echo "备份路径: $BACKUP_PATH"
-          
-          # 检查目录权限
-          echo "检查目录权限..."
-          ls -la /www/wwwroot/ || echo "无法访问 /www/wwwroot/"
-          ls -la /www/wwwroot/39.105.117.48/ || echo "无法访问目标目录"
-          
-          # 创建部署和备份目录
-          echo "创建目录..."
-          mkdir -p $DEPLOY_PATH
-          mkdir -p $BACKUP_PATH
-          
-          # 检查目录是否创建成功
-          echo "检查目录创建结果..."
-          ls -la $DEPLOY_PATH
-          ls -la $BACKUP_PATH
-          
-          # 备份当前版本
-          echo "备份当前版本..."
-          if [ -d "$DEPLOY_PATH" ] && [ "$(ls -A $DEPLOY_PATH 2>/dev/null)" ]; then
-            mkdir -p $BACKUP_PATH/backup_$TIMESTAMP
-            cp -r $DEPLOY_PATH/* $BACKUP_PATH/backup_$TIMESTAMP/ 2>/dev/null || true
-            echo "备份完成：$BACKUP_PATH/backup_$TIMESTAMP"
-            ls -la $BACKUP_PATH/backup_$TIMESTAMP
-          else
-            echo "目标目录为空或不存在，跳过备份"
-          fi
-          
-          echo "准备接收新版本文件..."
-    
-    - name: 上传构建文件
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    - name: 上传文件
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ secrets.DEPLOY_HOST }}
@@ -111,8 +35,7 @@ jobs:
         target: "/tmp/praisestar-deploy/"
         strip_components: 1
     
-    - name: 验证文件上传
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    - name: 部署到服务器
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.DEPLOY_HOST }}
@@ -120,171 +43,32 @@ jobs:
         key: ${{ secrets.DEPLOY_SSH_KEY }}
         port: ${{ secrets.DEPLOY_PORT || 22 }}
         script: |
-          echo "=== 验证文件上传结果 ==="
-          echo "临时目录: /tmp/praisestar-deploy/"
-          echo "临时目录是否存在:"
-          ls -la /tmp/praisestar-deploy/ || echo "临时目录不存在"
-          echo "临时目录内容:"
-          ls -la /tmp/praisestar-deploy/
-          echo "临时目录大小:"
-          du -sh /tmp/praisestar-deploy/
-          echo "文件数量:"
-          find /tmp/praisestar-deploy/ -type f | wc -l
-          echo "目录数量:"
-          find /tmp/praisestar-deploy/ -type d | wc -l
-    
-    - name: 完成部署
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.DEPLOY_HOST }}
-        username: ${{ secrets.DEPLOY_USER }}
-        key: ${{ secrets.DEPLOY_SSH_KEY }}
-        port: ${{ secrets.DEPLOY_PORT || 22 }}
-        script: |
-          echo "完成部署配置..."
-          
           DEPLOY_PATH="/www/wwwroot/39.105.117.48"
           TEMP_DIR="/tmp/praisestar-deploy"
           
-          echo "检查临时目录内容..."
-          ls -la $TEMP_DIR || echo "临时目录不存在"
-          
-          echo "检查部署目录当前状态..."
-          ls -la $DEPLOY_PATH || echo "部署目录不存在"
-          
-          # 移动文件到部署目录
-          echo "移动文件到部署目录..."
-          # 清空目标目录（保留备份目录和系统文件）
-          echo "清空目标目录..."
+          # 清空部署目录（保留备份和系统文件）
           cd $DEPLOY_PATH
-          # 删除所有文件和目录，除了 backup 和 .user.ini
           for item in *; do
             if [ "$item" != "backup" ] && [ "$item" != ".user.ini" ]; then
-              echo "删除: $item"
               rm -rf "$item" 2>/dev/null || true
             fi
           done
           
-          echo "清空后的目录内容:"
-          ls -la $DEPLOY_PATH
-          
-          echo "复制文件到部署目录..."
-          echo "从 $TEMP_DIR 复制到 $DEPLOY_PATH"
-          
-          # 使用更可靠的复制方法
+          # 复制文件
           if [ -d "$TEMP_DIR" ]; then
-            echo "临时目录存在，开始复制..."
-            
-            # 方法1：使用 rsync（推荐）
-            echo "尝试使用 rsync 复制..."
-            rsync -av $TEMP_DIR/ $DEPLOY_PATH/ 2>&1 || {
-              echo "rsync 失败，尝试使用 cp 命令..."
-              # 方法2：使用 cp 命令
-              cp -r $TEMP_DIR/* $DEPLOY_PATH/ 2>&1 || {
-                echo "cp 失败，尝试逐个复制..."
-                # 方法3：逐个复制
-                for item in $TEMP_DIR/*; do
-                  if [ -e "$item" ]; then
-                    echo "复制: $(basename "$item")"
-                    cp -r "$item" $DEPLOY_PATH/ 2>&1 || echo "复制失败: $(basename "$item")"
-                  fi
-                done
-              }
-            }
-          else
-            echo "错误：临时目录不存在: $TEMP_DIR"
-            exit 1
+            cp -r $TEMP_DIR/* $DEPLOY_PATH/ 2>/dev/null || true
           fi
           
-          echo "复制后的目录内容:"
-          ls -la $DEPLOY_PATH
-          
-          echo "检查部署后的目录内容..."
-          ls -la $DEPLOY_PATH
-          
           # 设置权限
-          echo "设置文件权限..."
-          chown -R nginx:nginx $DEPLOY_PATH 2>/dev/null || true
-          chmod -R 644 $DEPLOY_PATH 2>/dev/null || true
-          find $DEPLOY_PATH -type d -exec chmod 755 {} \; 2>/dev/null || true
-          
-          # 确保 index.html 有正确的权限
-          chmod 644 $DEPLOY_PATH/index.html 2>/dev/null || true
-          chown nginx:nginx $DEPLOY_PATH/index.html 2>/dev/null || true
-          
-          # 检查关键文件权限
-          echo "检查关键文件权限..."
-          ls -la $DEPLOY_PATH/index.html
-          ls -la $DEPLOY_PATH/ | head -10
-          
-          echo "检查最终权限设置..."
-          ls -la $DEPLOY_PATH
+          chmod -R 755 $DEPLOY_PATH 2>/dev/null || true
+          chown -R deploy:deploy $DEPLOY_PATH 2>/dev/null || true
+          find $DEPLOY_PATH -type f -exec chmod 644 {} \; 2>/dev/null || true
           
           # 重启服务
-          echo "重启Web服务..."
           systemctl reload nginx 2>/dev/null || true
           
-          # 权限诊断
-          echo "=== 权限诊断 ==="
-          echo "检查 nginx 用户权限..."
-          sudo -u nginx test -r $DEPLOY_PATH/index.html && echo "✅ nginx 可以读取 index.html" || echo "❌ nginx 无法读取 index.html"
-          sudo -u nginx test -x $DEPLOY_PATH && echo "✅ nginx 可以访问目录" || echo "❌ nginx 无法访问目录"
+          # 清理临时文件
+          rm -rf $TEMP_DIR 2>/dev/null || true
           
-          echo "检查文件权限详情..."
-          ls -la $DEPLOY_PATH/index.html
-          ls -la $DEPLOY_PATH/ | grep -E "(index\.html|\.js|\.css)"
-          
-          echo "检查 nginx 配置..."
-          nginx -t 2>&1 || echo "nginx 配置检查失败"
-          
-          # 暂时不清理临时文件，用于调试
-          echo "临时文件保留在: $TEMP_DIR"
-          echo "临时文件内容:"
-          ls -la $TEMP_DIR
-          echo "临时文件大小:"
-          du -sh $TEMP_DIR
-          
-          echo "部署完成！"
-          echo "=== 最终检查部署目录内容 ==="
-          ls -la $DEPLOY_PATH
-          echo "=== 部署目录文件统计 ==="
-          echo "文件数量: $(find $DEPLOY_PATH -type f | wc -l)"
-          echo "目录数量: $(find $DEPLOY_PATH -type d | wc -l)"
-          echo "部署目录大小: $(du -sh $DEPLOY_PATH)"
-          echo "=== 临时目录仍然保留 ==="
-          echo "临时目录: $TEMP_DIR"
-          echo "临时目录内容:"
-          ls -la $TEMP_DIR
-          echo "临时目录大小: $(du -sh $TEMP_DIR)"
-          echo "=== 对比信息 ==="
-          echo "临时目录文件数: $(find $TEMP_DIR -type f | wc -l)"
-          echo "部署目录文件数: $(find $DEPLOY_PATH -type f | wc -l)"
-          echo "访问地址：http://${{ secrets.DEPLOY_HOST }}/39.105.117.48"
-    
-    - name: 部署成功通知
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      run: |
-        echo "🎉 部署成功完成！"
-        echo "📋 部署信息："
-        echo "- 分支：${{ github.ref_name }}"
-        echo "- 提交：${{ github.sha }}"
-        echo "- 提交者：${{ github.actor }}"
-        echo "- 部署时间：$(date)"
-        echo "- 服务器：${{ secrets.DEPLOY_HOST }}"
-        echo "🌐 访问地址：http://${{ secrets.DEPLOY_HOST }}/39.105.117.48"
-    
-    - name: 部署失败通知
-      if: failure()
-      run: |
-        echo "❌ 部署失败！"
-        echo "📋 失败信息："
-        echo "- 分支：${{ github.ref_name }}"
-        echo "- 提交：${{ github.sha }}"
-        echo "- 失败时间：$(date)"
-        echo "🔍 请检查："
-        echo "1. 服务器连接是否正常"
-        echo "2. SSH密钥是否正确配置"
-        echo "3. 服务器权限是否足够"
-        echo "4. 查看详细日志：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "部署完成！访问地址：http://${{ secrets.DEPLOY_HOST }}/39.105.117.48"
  
