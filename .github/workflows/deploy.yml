@@ -66,15 +66,33 @@ jobs:
           BACKUP_PATH="/www/wwwroot/39.105.117.48/backup"
           TIMESTAMP=$(date +%Y%m%d_%H%M%S)
           
+          echo "当前用户: $(whoami)"
+          echo "当前目录: $(pwd)"
+          echo "部署路径: $DEPLOY_PATH"
+          echo "备份路径: $BACKUP_PATH"
+          
+          # 检查目录权限
+          echo "检查目录权限..."
+          ls -la /www/wwwroot/ || echo "无法访问 /www/wwwroot/"
+          ls -la /www/wwwroot/39.105.117.48/ || echo "无法访问目标目录"
+          
           # 创建部署和备份目录
+          echo "创建目录..."
           mkdir -p $DEPLOY_PATH
           mkdir -p $BACKUP_PATH
+          
+          # 检查目录是否创建成功
+          echo "检查目录创建结果..."
+          ls -la $DEPLOY_PATH
+          ls -la $BACKUP_PATH
           
           # 备份当前版本
           echo "备份当前版本..."
           if [ -d "$DEPLOY_PATH" ] && [ "$(ls -A $DEPLOY_PATH 2>/dev/null)" ]; then
+            mkdir -p $BACKUP_PATH/backup_$TIMESTAMP
             cp -r $DEPLOY_PATH/* $BACKUP_PATH/backup_$TIMESTAMP/ 2>/dev/null || true
             echo "备份完成：$BACKUP_PATH/backup_$TIMESTAMP"
+            ls -la $BACKUP_PATH/backup_$TIMESTAMP
           else
             echo "目标目录为空或不存在，跳过备份"
           fi
@@ -107,17 +125,32 @@ jobs:
           DEPLOY_PATH="/www/wwwroot/39.105.117.48"
           TEMP_DIR="/tmp/praisestar-deploy"
           
+          echo "检查临时目录内容..."
+          ls -la $TEMP_DIR || echo "临时目录不存在"
+          
+          echo "检查部署目录当前状态..."
+          ls -la $DEPLOY_PATH || echo "部署目录不存在"
+          
           # 移动文件到部署目录
           echo "移动文件到部署目录..."
           # 清空目标目录（保留备份目录）
+          echo "清空目标目录..."
           find $DEPLOY_PATH -maxdepth 1 -not -path $DEPLOY_PATH -not -name backup -exec rm -rf {} \; 2>/dev/null || true
+          
+          echo "复制文件到部署目录..."
           cp -r $TEMP_DIR/* $DEPLOY_PATH/ 2>/dev/null || true
+          
+          echo "检查部署后的目录内容..."
+          ls -la $DEPLOY_PATH
           
           # 设置权限
           echo "设置文件权限..."
           chown -R nginx:nginx $DEPLOY_PATH 2>/dev/null || true
           chmod -R 644 $DEPLOY_PATH 2>/dev/null || true
           find $DEPLOY_PATH -type d -exec chmod 755 {} \; 2>/dev/null || true
+          
+          echo "检查最终权限设置..."
+          ls -la $DEPLOY_PATH
           
           # 重启服务
           echo "重启Web服务..."
@@ -128,6 +161,8 @@ jobs:
           rm -rf $TEMP_DIR 2>/dev/null || true
           
           echo "部署完成！"
+          echo "最终检查部署目录内容："
+          ls -la $DEPLOY_PATH
           echo "访问地址：http://${{ secrets.DEPLOY_HOST }}/39.105.117.48"
     
     - name: 部署成功通知
