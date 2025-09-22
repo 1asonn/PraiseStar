@@ -1,0 +1,19 @@
+# 部署配置示例文件
+# 根据实际情况修改以下配置
+
+# 部署服务器配置
+DEPLOY_HOST=39.105.117.48
+DEPLOY_USER=deploy
+DEPLOY_PORT=22
+
+# 部署路径配置
+DEPLOY_PATH=/www/wwwroot/39.105.117.48
+BACKUP_PATH=/www/wwwroot/39.105.117.48/backup
+
+# 应用配置
+NODE_ENV=production
+API_BASE_URL=http://39.105.117.48:3000/api
+
+# 可选：通知配置
+# WEBHOOK_URL=https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
+# NOTIFICATION_EMAIL=admin@example.com

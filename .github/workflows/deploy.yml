@@ -1,0 +1,162 @@
+name: 自动部署到服务器
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: 设置 Node.js 环境
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: 安装依赖
+      run: |
+        echo "正在安装依赖..."
+        npm ci
+    
+    - name: 运行代码检查
+      run: |
+        echo "运行代码质量检查..."
+        npm audit --audit-level=high || echo "安全检查完成（有警告）"
+    
+    - name: 构建项目
+      run: |
+        echo "开始构建项目..."
+        npm run build
+        echo "构建完成，检查输出文件..."
+        ls -la dist/
+        echo "构建产物大小："
+        du -sh dist/
+    
+    - name: 创建部署包
+      run: |
+        echo "创建部署包..."
+        cd dist
+        tar -czf ../praisestar-build-$(date +%Y%m%d_%H%M%S).tar.gz .
+        cd ..
+        echo "部署包创建完成："
+        ls -lh *.tar.gz
+    
+    - name: 部署到服务器
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USER }}
+        key: ${{ secrets.DEPLOY_SSH_KEY }}
+        port: ${{ secrets.DEPLOY_PORT || 22 }}
+        script: |
+          echo "开始部署到服务器..."
+          
+          # 设置部署路径 - 部署到/www/wwwroot/39.105.117.48目录
+          DEPLOY_PATH="/www/wwwroot/39.105.117.48"
+          BACKUP_PATH="/www/wwwroot/39.105.117.48/backup"
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          
+          # 创建部署和备份目录
+          sudo mkdir -p $DEPLOY_PATH
+          sudo mkdir -p $BACKUP_PATH
+          
+          # 备份当前版本
+          echo "备份当前版本..."
+          if [ -d "$DEPLOY_PATH" ] && [ "$(ls -A $DEPLOY_PATH)" ]; then
+            sudo cp -r $DEPLOY_PATH/* $BACKUP_PATH/backup_$TIMESTAMP/
+            echo "备份完成：$BACKUP_PATH/backup_$TIMESTAMP"
+          else
+            echo "目标目录为空或不存在，跳过备份"
+          fi
+          
+          # 创建临时目录
+          TEMP_DIR="/tmp/praisestar-deploy-$TIMESTAMP"
+          mkdir -p $TEMP_DIR
+          
+          echo "准备接收新版本文件..."
+    
+    - name: 上传构建文件
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USER }}
+        key: ${{ secrets.DEPLOY_SSH_KEY }}
+        port: ${{ secrets.DEPLOY_PORT || 22 }}
+        source: "dist/*"
+        target: "/tmp/praisestar-deploy-$(date +%Y%m%d_%H%M%S)/"
+        strip_components: 1
+    
+    - name: 完成部署
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USER }}
+        key: ${{ secrets.DEPLOY_SSH_KEY }}
+        port: ${{ secrets.DEPLOY_PORT || 22 }}
+        script: |
+          echo "完成部署配置..."
+          
+          DEPLOY_PATH="/www/wwwroot/39.105.117.48"
+          TEMP_DIR="/tmp/praisestar-deploy-$(date +%Y%m%d_%H%M%S)"
+          
+          # 移动文件到部署目录
+          echo "移动文件到部署目录..."
+          # 清空目标目录（保留备份目录）
+          sudo find $DEPLOY_PATH -maxdepth 1 -not -path $DEPLOY_PATH -not -name backup -exec rm -rf {} \;
+          sudo cp -r $TEMP_DIR/* $DEPLOY_PATH/
+          
+          # 设置权限
+          echo "设置文件权限..."
+          sudo chown -R nginx:nginx $DEPLOY_PATH
+          sudo chmod -R 644 $DEPLOY_PATH
+          sudo find $DEPLOY_PATH -type d -exec chmod 755 {} \;
+          
+          # 重启服务
+          echo "重启Web服务..."
+          sudo systemctl reload nginx
+          
+          # 清理临时文件
+          echo "清理临时文件..."
+          rm -rf $TEMP_DIR
+          
+          echo "部署完成！"
+          echo "访问地址：http://${{ secrets.DEPLOY_HOST }}/39.105.117.48"
+    
+    - name: 部署成功通知
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: |
+        echo "🎉 部署成功完成！"
+        echo "📋 部署信息："
+        echo "- 分支：${{ github.ref_name }}"
+        echo "- 提交：${{ github.sha }}"
+        echo "- 提交者：${{ github.actor }}"
+        echo "- 部署时间：$(date)"
+        echo "- 服务器：${{ secrets.DEPLOY_HOST }}"
+        echo "🌐 访问地址：http://${{ secrets.DEPLOY_HOST }}/39.105.117.48"
+    
+    - name: 部署失败通知
+      if: failure()
+      run: |
+        echo "❌ 部署失败！"
+        echo "📋 失败信息："
+        echo "- 分支：${{ github.ref_name }}"
+        echo "- 提交：${{ github.sha }}"
+        echo "- 失败时间：$(date)"
+        echo "🔍 请检查："
+        echo "1. 服务器连接是否正常"
+        echo "2. SSH密钥是否正确配置"
+        echo "3. 服务器权限是否足够"
+        echo "4. 查看详细日志：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+ 

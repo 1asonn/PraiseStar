@@ -32,6 +32,9 @@
   "scripts": {
     "dev": "webpack serve --mode development --port 8081",
     "build": "webpack --mode production",
-    "start": "webpack serve --mode development --open --port 8080"
+    "start": "webpack serve --mode development --open --port 8080",
+    "deploy": "npm run build && ./deploy.sh",
+    "deploy:check": "npm run build && echo '构建完成，可以部署'",
+    "predeploy": "npm run build"
   }
 }
