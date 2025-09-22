@@ -111,6 +111,28 @@ jobs:
         target: "/tmp/praisestar-deploy/"
         strip_components: 1
     
+    - name: 验证文件上传
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USER }}
+        key: ${{ secrets.DEPLOY_SSH_KEY }}
+        port: ${{ secrets.DEPLOY_PORT || 22 }}
+        script: |
+          echo "=== 验证文件上传结果 ==="
+          echo "临时目录: /tmp/praisestar-deploy/"
+          echo "临时目录是否存在:"
+          ls -la /tmp/praisestar-deploy/ || echo "临时目录不存在"
+          echo "临时目录内容:"
+          ls -la /tmp/praisestar-deploy/
+          echo "临时目录大小:"
+          du -sh /tmp/praisestar-deploy/
+          echo "文件数量:"
+          find /tmp/praisestar-deploy/ -type f | wc -l
+          echo "目录数量:"
+          find /tmp/praisestar-deploy/ -type d | wc -l
+    
     - name: 完成部署
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       uses: appleboy/ssh-action@v1.0.3
@@ -170,8 +192,20 @@ jobs:
           du -sh $TEMP_DIR
           
           echo "部署完成！"
-          echo "最终检查部署目录内容："
+          echo "=== 最终检查部署目录内容 ==="
           ls -la $DEPLOY_PATH
+          echo "=== 部署目录文件统计 ==="
+          echo "文件数量: $(find $DEPLOY_PATH -type f | wc -l)"
+          echo "目录数量: $(find $DEPLOY_PATH -type d | wc -l)"
+          echo "部署目录大小: $(du -sh $DEPLOY_PATH)"
+          echo "=== 临时目录仍然保留 ==="
+          echo "临时目录: $TEMP_DIR"
+          echo "临时目录内容:"
+          ls -la $TEMP_DIR
+          echo "临时目录大小: $(du -sh $TEMP_DIR)"
+          echo "=== 对比信息 ==="
+          echo "临时目录文件数: $(find $TEMP_DIR -type f | wc -l)"
+          echo "部署目录文件数: $(find $DEPLOY_PATH -type f | wc -l)"
           echo "访问地址：http://${{ secrets.DEPLOY_HOST }}/39.105.117.48"
     
     - name: 部署成功通知
