@@ -133,9 +133,15 @@ jobs:
           
           # 移动文件到部署目录
           echo "移动文件到部署目录..."
-          # 清空目标目录（保留备份目录）
+          # 清空目标目录（保留备份目录和系统文件）
           echo "清空目标目录..."
-          find $DEPLOY_PATH -maxdepth 1 -not -path $DEPLOY_PATH -not -name backup -exec rm -rf {} \; 2>/dev/null || true
+          cd $DEPLOY_PATH
+          # 删除所有文件和目录，除了 backup 和 .user.ini
+          for item in *; do
+            if [ "$item" != "backup" ] && [ "$item" != ".user.ini" ]; then
+              rm -rf "$item" 2>/dev/null || true
+            fi
+          done
           
           echo "复制文件到部署目录..."
           cp -r $TEMP_DIR/* $DEPLOY_PATH/ 2>/dev/null || true
@@ -156,9 +162,12 @@ jobs:
           echo "重启Web服务..."
           systemctl reload nginx 2>/dev/null || true
           
-          # 清理临时文件
-          echo "清理临时文件..."
-          rm -rf $TEMP_DIR 2>/dev/null || true
+          # 暂时不清理临时文件，用于调试
+          echo "临时文件保留在: $TEMP_DIR"
+          echo "临时文件内容:"
+          ls -la $TEMP_DIR
+          echo "临时文件大小:"
+          du -sh $TEMP_DIR
           
           echo "部署完成！"
           echo "最终检查部署目录内容："
