@@ -61,27 +61,23 @@ jobs:
         script: |
           echo "开始部署到服务器..."
           
-          # 设置部署路径 - 部署到/www/wwwroot/39.105.117.48目录
+          # 设置部署路径
           DEPLOY_PATH="/www/wwwroot/39.105.117.48"
           BACKUP_PATH="/www/wwwroot/39.105.117.48/backup"
           TIMESTAMP=$(date +%Y%m%d_%H%M%S)
           
           # 创建部署和备份目录
-          sudo mkdir -p $DEPLOY_PATH
-          sudo mkdir -p $BACKUP_PATH
+          mkdir -p $DEPLOY_PATH
+          mkdir -p $BACKUP_PATH
           
           # 备份当前版本
           echo "备份当前版本..."
-          if [ -d "$DEPLOY_PATH" ] && [ "$(ls -A $DEPLOY_PATH)" ]; then
-            sudo cp -r $DEPLOY_PATH/* $BACKUP_PATH/backup_$TIMESTAMP/
+          if [ -d "$DEPLOY_PATH" ] && [ "$(ls -A $DEPLOY_PATH 2>/dev/null)" ]; then
+            cp -r $DEPLOY_PATH/* $BACKUP_PATH/backup_$TIMESTAMP/ 2>/dev/null || true
             echo "备份完成：$BACKUP_PATH/backup_$TIMESTAMP"
           else
             echo "目标目录为空或不存在，跳过备份"
           fi
-          
-          # 创建临时目录
-          TEMP_DIR="/tmp/praisestar-deploy-$TIMESTAMP"
-          mkdir -p $TEMP_DIR
           
           echo "准备接收新版本文件..."
     
@@ -94,7 +90,7 @@ jobs:
         key: ${{ secrets.DEPLOY_SSH_KEY }}
         port: ${{ secrets.DEPLOY_PORT || 22 }}
         source: "dist/*"
-        target: "/tmp/praisestar-deploy-$(date +%Y%m%d_%H%M%S)/"
+        target: "/tmp/praisestar-deploy/"
         strip_components: 1
     
     - name: 完成部署
@@ -109,27 +105,27 @@ jobs:
           echo "完成部署配置..."
           
           DEPLOY_PATH="/www/wwwroot/39.105.117.48"
-          TEMP_DIR="/tmp/praisestar-deploy-$(date +%Y%m%d_%H%M%S)"
+          TEMP_DIR="/tmp/praisestar-deploy"
           
           # 移动文件到部署目录
           echo "移动文件到部署目录..."
           # 清空目标目录（保留备份目录）
-          sudo find $DEPLOY_PATH -maxdepth 1 -not -path $DEPLOY_PATH -not -name backup -exec rm -rf {} \;
-          sudo cp -r $TEMP_DIR/* $DEPLOY_PATH/
+          find $DEPLOY_PATH -maxdepth 1 -not -path $DEPLOY_PATH -not -name backup -exec rm -rf {} \; 2>/dev/null || true
+          cp -r $TEMP_DIR/* $DEPLOY_PATH/ 2>/dev/null || true
           
           # 设置权限
           echo "设置文件权限..."
-          sudo chown -R nginx:nginx $DEPLOY_PATH
-          sudo chmod -R 644 $DEPLOY_PATH
-          sudo find $DEPLOY_PATH -type d -exec chmod 755 {} \;
+          chown -R nginx:nginx $DEPLOY_PATH 2>/dev/null || true
+          chmod -R 644 $DEPLOY_PATH 2>/dev/null || true
+          find $DEPLOY_PATH -type d -exec chmod 755 {} \; 2>/dev/null || true
           
           # 重启服务
           echo "重启Web服务..."
-          sudo systemctl reload nginx
+          systemctl reload nginx 2>/dev/null || true
           
           # 清理临时文件
           echo "清理临时文件..."
-          rm -rf $TEMP_DIR
+          rm -rf $TEMP_DIR 2>/dev/null || true
           
           echo "部署完成！"
           echo "访问地址：http://${{ secrets.DEPLOY_HOST }}/39.105.117.48"
