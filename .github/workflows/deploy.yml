@@ -161,12 +161,44 @@ jobs:
           # 删除所有文件和目录，除了 backup 和 .user.ini
           for item in *; do
             if [ "$item" != "backup" ] && [ "$item" != ".user.ini" ]; then
+              echo "删除: $item"
               rm -rf "$item" 2>/dev/null || true
             fi
           done
           
+          echo "清空后的目录内容:"
+          ls -la $DEPLOY_PATH
+          
           echo "复制文件到部署目录..."
-          cp -r $TEMP_DIR/* $DEPLOY_PATH/ 2>/dev/null || true
+          echo "从 $TEMP_DIR 复制到 $DEPLOY_PATH"
+          
+          # 使用更可靠的复制方法
+          if [ -d "$TEMP_DIR" ]; then
+            echo "临时目录存在，开始复制..."
+            
+            # 方法1：使用 rsync（推荐）
+            echo "尝试使用 rsync 复制..."
+            rsync -av $TEMP_DIR/ $DEPLOY_PATH/ 2>&1 || {
+              echo "rsync 失败，尝试使用 cp 命令..."
+              # 方法2：使用 cp 命令
+              cp -r $TEMP_DIR/* $DEPLOY_PATH/ 2>&1 || {
+                echo "cp 失败，尝试逐个复制..."
+                # 方法3：逐个复制
+                for item in $TEMP_DIR/*; do
+                  if [ -e "$item" ]; then
+                    echo "复制: $(basename "$item")"
+                    cp -r "$item" $DEPLOY_PATH/ 2>&1 || echo "复制失败: $(basename "$item")"
+                  fi
+                done
+              }
+            }
+          else
+            echo "错误：临时目录不存在: $TEMP_DIR"
+            exit 1
+          fi
+          
+          echo "复制后的目录内容:"
+          ls -la $DEPLOY_PATH
           
           echo "检查部署后的目录内容..."
           ls -la $DEPLOY_PATH
