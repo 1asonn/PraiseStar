@@ -209,12 +209,34 @@ jobs:
           chmod -R 644 $DEPLOY_PATH 2>/dev/null || true
           find $DEPLOY_PATH -type d -exec chmod 755 {} \; 2>/dev/null || true
           
+          # 确保 index.html 有正确的权限
+          chmod 644 $DEPLOY_PATH/index.html 2>/dev/null || true
+          chown nginx:nginx $DEPLOY_PATH/index.html 2>/dev/null || true
+          
+          # 检查关键文件权限
+          echo "检查关键文件权限..."
+          ls -la $DEPLOY_PATH/index.html
+          ls -la $DEPLOY_PATH/ | head -10
+          
           echo "检查最终权限设置..."
           ls -la $DEPLOY_PATH
           
           # 重启服务
           echo "重启Web服务..."
           systemctl reload nginx 2>/dev/null || true
+          
+          # 权限诊断
+          echo "=== 权限诊断 ==="
+          echo "检查 nginx 用户权限..."
+          sudo -u nginx test -r $DEPLOY_PATH/index.html && echo "✅ nginx 可以读取 index.html" || echo "❌ nginx 无法读取 index.html"
+          sudo -u nginx test -x $DEPLOY_PATH && echo "✅ nginx 可以访问目录" || echo "❌ nginx 无法访问目录"
+          
+          echo "检查文件权限详情..."
+          ls -la $DEPLOY_PATH/index.html
+          ls -la $DEPLOY_PATH/ | grep -E "(index\.html|\.js|\.css)"
+          
+          echo "检查 nginx 配置..."
+          nginx -t 2>&1 || echo "nginx 配置检查失败"
           
           # 暂时不清理临时文件，用于调试
           echo "临时文件保留在: $TEMP_DIR"
