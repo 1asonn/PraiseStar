@@ -27,7 +27,12 @@ const StatCard = ({
       loading={loading}
       bodyStyle={{ 
         padding: isMobile ? '16px 12px' : '24px',
-        textAlign: 'center'
+        textAlign: 'center',
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255,255,255,0.2)',
+        borderRadius: '16px',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
       }}
       {...props}
     >

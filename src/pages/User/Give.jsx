@@ -18,6 +18,8 @@ import {
   Spin,
   Cascader
 } from 'antd'
+import ModernCard from '../../components/ModernCard'
+import ModernButton from '../../components/ModernButton'
 import {
   SendOutlined,
   StarOutlined,
@@ -220,7 +222,7 @@ const Give = () => {
       <Row gutter={[16, 16]}>
         {/* 个人余额信息 */}
         <Col span={24}>
-          <Card className="card-shadow">
+          <ModernCard hoverable>
             <Row gutter={[16, 16]}>
               <Col xs={24} sm={8}>
                 <Statistic
@@ -250,12 +252,12 @@ const Give = () => {
                 />
               </Col>
             </Row>
-          </Card>
+          </ModernCard>
         </Col>
 
         {/* 赠送表单 */}
         <Col xs={24} lg={16}>
-          <Card title="赠送赞赞星" className="card-shadow">
+          <ModernCard title="赠送赞赞星" hoverable>
             <Alert
               message="赠送说明"
               description={
@@ -369,25 +371,27 @@ const Give = () => {
               </Form.Item>
 
               <Form.Item>
-                <Button
+                <ModernButton
                   type="primary"
                   htmlType="submit"
                   loading={loading}
                   size="large"
+                  variant="gradient"
+                  glow={true}
                   icon={<SendOutlined />}
                   block
                   disabled={user.availableToGive === 0}
                 >
                   {user.availableToGive === 0 ? '本月赠送额度已用完' : '确认赠送'}
-                </Button>
+                </ModernButton>
               </Form.Item>
             </Form>
-          </Card>
+          </ModernCard>
         </Col>
 
         {/* 赠送信息确认 */}
         <Col xs={24} lg={8}>
-          <Card title="赠送信息确认" className="card-shadow">
+          <ModernCard title="赠送信息确认" hoverable>
             {selectedUser ? (
               <div>
                 <div style={{ textAlign: 'center', marginBottom: 16 }}>
@@ -428,7 +432,7 @@ const Give = () => {
                 <div>请先选择赠送对象</div>
               </div>
             )}
-          </Card>
+          </ModernCard>
         </Col>
       </Row>
     </div>

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Row, Col, Card, Statistic, Progress, List, Avatar, Tag, Space, Spin, message } from 'antd'
+import ModernCard from '../../components/ModernCard'
+import ModernLoading from '../../components/ModernLoading'
 import {
   StarOutlined,
   SendOutlined,
@@ -234,12 +236,7 @@ const Dashboard = () => {
 
 
   if (loading) {
-    return (
-      <div style={{ textAlign: 'center', padding: '50px 0' }}>
-        <Spin size="large" />
-        <div style={{ marginTop: 16, color: '#666' }}>加载中...</div>
-      </div>
-    )
+    return <ModernLoading size="large" text="加载中..." type="card" />
   }
 
   return (
@@ -274,7 +271,7 @@ const Dashboard = () => {
       <Row gutter={[16, 16]}>
         {/* 个人赞赞星统计卡片 */}
         <Col xs={24} sm={12} md={8} lg={4}>
-          <Card className="card-shadow">
+          <ModernCard hoverable>
             <Statistic
               title="本月可赠送"
               value={currentUser.availableToGive}
@@ -282,11 +279,11 @@ const Dashboard = () => {
               suffix={<StarIcon color="#52c41a" />}
               valueStyle={{ color: '#52c41a' }}
             />
-          </Card>
+          </ModernCard>
         </Col>
         
         <Col xs={24} sm={12} md={8} lg={4}>
-          <Card className="card-shadow">
+          <ModernCard hoverable>
             <Statistic
               title="本月获赠"
               value={currentUser?.receivedThisMonth|| 0}
@@ -294,11 +291,11 @@ const Dashboard = () => {
               suffix={<StarIcon color="#722ed1" />}
               valueStyle={{ color: '#722ed1' }}
             />
-          </Card>
+          </ModernCard>
         </Col>
         
         <Col xs={24} sm={12} md={8} lg={4}>
-          <Card className="card-shadow">
+          <ModernCard hoverable>
             <Statistic
               title="累计获赠"
               value={currentUser.receivedThisYear}
@@ -306,11 +303,11 @@ const Dashboard = () => {
               suffix={<StarIcon color="#1890ff" />}
               valueStyle={{ color: '#1890ff' }}
             />
-          </Card>
+          </ModernCard>
         </Col>
         
         <Col xs={24} sm={12} md={8} lg={4}>
-          <Card className="card-shadow">
+          <ModernCard hoverable>
             <Statistic
               title="可兑换余额"
               value={currentUser.availableToRedeem}
@@ -318,11 +315,11 @@ const Dashboard = () => {
               suffix={<StarIcon color="#fa8c16" />}
               valueStyle={{ color: '#fa8c16' }}
             />
-          </Card>
+          </ModernCard>
         </Col>
         
         <Col xs={24} sm={12} md={8} lg={4}>
-          <Card className="card-shadow">
+          <ModernCard hoverable>
             <Statistic
               title="当前排名"
               value={myRanking?.ranking || '--'}
@@ -330,14 +327,14 @@ const Dashboard = () => {
               suffix="位"
               valueStyle={{ color: '#eb2f96' }}
             />
-          </Card>
+          </ModernCard>
         </Col>
       </Row>
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         {/* 本月赠送进度 */}
         <Col xs={24} lg={12}>
-          <Card title="本月赠送进度" className="card-shadow">
+          <ModernCard title="本月赠送进度" hoverable>
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span>已赠送</span>
@@ -363,12 +360,12 @@ const Dashboard = () => {
             <div style={{ color: '#666', fontSize: 12 }}>
               💡 本月剩余 {currentUser.availableToGive} 颗赞赞星，月底未送出将自动清零
             </div>
-          </Card>
+          </ModernCard>
         </Col>
 
         {/* 兑换统计 */}
         <Col xs={24} lg={12}>
-          <Card title="年度兑换统计" className="card-shadow">
+          <ModernCard title="年度兑换统计" hoverable>
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span>已兑换</span>
@@ -394,16 +391,16 @@ const Dashboard = () => {
             <div style={{ color: '#666', fontSize: 12 }}>
               💡 获赠的赞赞星年底未兑换将自动清零
             </div>
-          </Card>
+          </ModernCard>
         </Col>
       </Row>
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         {/* 最近收到的赞赞星 */}
         <Col xs={24} lg={12}>
-          <Card 
+          <ModernCard 
             title="最近收到的赞赞星" 
-            className="card-shadow"
+            hoverable
             extra={
               <a onClick={() => fetchRecentRecords()}>刷新</a>
             }
@@ -454,14 +451,14 @@ const Dashboard = () => {
                 </List.Item>
               )}
             />
-          </Card>
+          </ModernCard>
         </Col>
 
         {/* 最近赠送的赞赞星 */}
         <Col xs={24} lg={12}>
-          <Card 
+          <ModernCard 
             title="最近赠送的赞赞星" 
-            className="card-shadow"
+            hoverable
             extra={
               <a onClick={() => fetchRecentRecords()}>刷新</a>
             }
@@ -512,14 +509,14 @@ const Dashboard = () => {
                 </List.Item>
               )}
             />
-          </Card>
+          </ModernCard>
         </Col>
       </Row>
 
       {/* 月度亮点 */}
       <Row style={{ marginTop: 16 }}>
         <Col span={24}>
-          <Card title="本月亮点" className="card-shadow">
+          <ModernCard title="本月亮点" hoverable>
             <Row gutter={[16, 16]}>
               <Col xs={24} sm={8}>
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
@@ -611,7 +608,7 @@ const Dashboard = () => {
                 </Row>
               </div>
             )} */}
-          </Card>
+          </ModernCard>
         </Col>
       </Row>
       

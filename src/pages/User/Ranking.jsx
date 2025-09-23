@@ -11,6 +11,7 @@ import {
   Progress,
   Space
 } from 'antd'
+import ModernCard from '../../components/ModernCard'
 import {
   TrophyOutlined,
   StarOutlined,
@@ -494,7 +495,7 @@ const Ranking = () => {
       {/* 个人排名概览 */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={8}>
-          <Card className="card-shadow">
+          <ModernCard hoverable>
             <Statistic
               title="本月排名"
               value={myRanking.month?.ranking || currentUserRanking.month || '-'}
@@ -512,11 +513,11 @@ const Ranking = () => {
                 <span style={{ opacity: 0 }}>占位</span>
               )}
             </div>
-          </Card>
+          </ModernCard>
         </Col>
         
         <Col xs={24} sm={8}>
-          <Card className="card-shadow">
+          <ModernCard hoverable>
             <Statistic
               title="季度排名"
               value={myRanking.quarter?.ranking || currentUserRanking.quarter || '-'}
@@ -534,11 +535,11 @@ const Ranking = () => {
                 <span style={{ opacity: 0 }}>占位</span>
               )}
             </div>
-          </Card>
+          </ModernCard>
         </Col>
         
         <Col xs={24} sm={8}>
-          <Card className="card-shadow">
+          <ModernCard hoverable>
             <Statistic
               title="年度排名"
               value={myRanking.year?.ranking || currentUserRanking.year || '-'}
@@ -556,7 +557,7 @@ const Ranking = () => {
                 <span style={{ opacity: 0 }}>占位</span>
               )}
             </div>
-          </Card>
+          </ModernCard>
         </Col>
       </Row>
 
@@ -607,7 +608,7 @@ const Ranking = () => {
       </Row> */}
 
       {/* 排行榜 */}
-      <Card title="全员排行榜" className="card-shadow">
+      <ModernCard title="全员排行榜" hoverable>
         <div 
           ref={scrollContainerRef}
           className={isMobile ? 'ranking-scroll-container' : ''}
@@ -623,7 +624,7 @@ const Ranking = () => {
             items={tabItems}
           />
         </div>
-      </Card>
+      </ModernCard>
 
       <style jsx="true">{`
         :global(.user-row) {

@@ -248,17 +248,19 @@ const Layout = ({ userType }) => {
 
       <AntLayout style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Header style={{
-          background: '#fff',
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(20px)',
           padding: isMobile ? '0 12px' : '0 16px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
           height: isMobile ? 70 : 80,
           position: 'sticky',
           top: 0,
           zIndex: 1000,
-          flexShrink: 0
+          flexShrink: 0,
+          borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
         }}>
           {/* 移动端菜单按钮 */}
           {isMobile && (
@@ -281,7 +283,10 @@ const Layout = ({ userType }) => {
           }}>
             <h2 style={{ 
               margin: 0, 
-              color: '#1890ff',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
               fontSize: isMobile ? 16 : 20,
               fontWeight: 'bold',
               lineHeight: 1.2
@@ -352,12 +357,15 @@ const Layout = ({ userType }) => {
         <Content style={{
           margin: isMobile ? '12px 8px' : '16px',
           padding: isMobile ? '12px' : '16px',
-          background: '#fff',
-          borderRadius: 8,
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: 16,
           flex: 1,
           overflow: 'auto',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+          border: '1px solid rgba(255, 255, 255, 0.2)'
         }}>
           <Outlet />
         </Content>

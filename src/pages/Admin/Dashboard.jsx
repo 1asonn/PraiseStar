@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Row, Col, Card, Statistic, Table, Progress, List, Avatar, Tag, Space, Spin, message } from 'antd'
+import ModernCard from '../../components/ModernCard'
+import ModernLoading from '../../components/ModernLoading'
 import {
   UserOutlined,
   TeamOutlined,
@@ -292,69 +294,60 @@ const AdminDashboard = () => {
         }
       `}</style>
       
-      {loading && (
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '200px' 
-        }}>
-          <Spin size="large" />
-        </div>
-      )}
+      {loading && <ModernLoading size="large" text="加载中..." type="card" />}
             {!loading && (
         <>
           {/* 系统总览统计 */}
           <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
         <Col xs={12} sm={6}>
-          <Card className="card-shadow" style={{ height: '100%' }}>
+          <ModernCard hoverable style={{ height: '100%' }}>
             <Statistic
               title="总用户数"
               value={stats.overview.total_users}
               prefix={<TeamOutlined style={{ color: '#1890ff' }} />}
               valueStyle={{ color: '#1890ff' }}
             />
-          </Card>
+          </ModernCard>
         </Col>
         
         <Col xs={12} sm={6}>
-          <Card className="card-shadow" style={{ height: '100%' }}>
+          <ModernCard hoverable style={{ height: '100%' }}>
             <Statistic
               title="本月已分配"
               value={stats.overview.monthly_allocated}
               prefix={<StarOutlined style={{ color: '#52c41a' }} />}
               valueStyle={{ color: '#52c41a' }}
             />
-          </Card>
+          </ModernCard>
         </Col>
         
         <Col xs={12} sm={6}>
-          <Card className="card-shadow" style={{ height: '100%' }}>
+          <ModernCard hoverable style={{ height: '100%' }}>
             <Statistic
               title="本月已赠送"
               value={stats.overview.monthly_given}
               prefix={<SendOutlined style={{ color: '#fa8c16' }} />}
               valueStyle={{ color: '#fa8c16' }}
             />
-          </Card>
+          </ModernCard>
         </Col>
         
         <Col xs={12} sm={6}>
-          <Card className="card-shadow" style={{ height: '100%' }}>
+          <ModernCard hoverable style={{ height: '100%' }}>
             <Statistic
               title="剩余未使用"
               value={stats.overview.remaining_unused}
               prefix={<StarOutlined style={{ color: '#eb2f96' }} />}
               valueStyle={{ color: '#eb2f96' }}
             />
-          </Card>
+          </ModernCard>
         </Col>
       </Row>
 
       {/* 活跃度统计 */}
       <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
         <Col xs={24} lg={12}>
-          <Card title="本月活跃度统计" className="card-shadow">
+          <ModernCard title="本月活跃度统计" hoverable>
             <Row gutter={[8, 8]}>
               <Col span={12}>
                 <div style={{ textAlign: 'center' }}>
@@ -385,11 +378,11 @@ const AdminDashboard = () => {
                 </div>
               </Col>
             </Row>
-          </Card>
+          </ModernCard>
         </Col>
 
         <Col xs={24} lg={12}>
-          <Card title="使用率分析" className="card-shadow">
+          <ModernCard title="使用率分析" hoverable>
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span>赞赞星使用率</span>
@@ -406,14 +399,14 @@ const AdminDashboard = () => {
             <div style={{ fontSize: 12, color: '#666' }}>
               已使用 {stats.usage.used_display} ⭐
             </div>
-          </Card>
+          </ModernCard>
         </Col>
       </Row>
 
       {/* 部门统计表格 */}
       <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
         <Col span={24}>
-          <Card title="部门活跃度统计" className="card-shadow">
+          <ModernCard title="部门活跃度统计" hoverable>
             <Table
               dataSource={departmentStats}
               columns={departmentColumns}
@@ -421,14 +414,14 @@ const AdminDashboard = () => {
               size="small"
               rowKey="department"
             />
-          </Card>
+          </ModernCard>
         </Col>
       </Row>
 
       <Row gutter={[8, 8]}>
         {/* 排行榜前5 */}
         <Col xs={24} lg={12}>
-          <Card title="年度获赠排行榜 TOP5" className="card-shadow">
+          <ModernCard title="年度获赠排行榜 TOP5" hoverable>
             <List
               dataSource={rankings}
               renderItem={(item, index) => (
@@ -459,12 +452,12 @@ const AdminDashboard = () => {
                 </List.Item>
               )}
             />
-          </Card>
+          </ModernCard>
         </Col>
 
         {/* 最近赠送记录 */}
         <Col xs={24} lg={12}>
-          <Card title="最近赠送记录" className="card-shadow">
+          <ModernCard title="最近赠送记录" hoverable>
             <List
               dataSource={recentGives}
               renderItem={item => (
@@ -493,14 +486,14 @@ const AdminDashboard = () => {
                 </List.Item>
               )}
             />
-          </Card>
+          </ModernCard>
         </Col>
       </Row>
 
       {/* 最近兑换记录 */}
       <Row style={{ marginTop: 8 }}>
         <Col span={24}>
-          <Card title="最近兑换记录" className="card-shadow">
+          <ModernCard title="最近兑换记录" hoverable>
             <List
               dataSource={recentRedemptions}
               renderItem={item => (
@@ -535,7 +528,7 @@ const AdminDashboard = () => {
                 </List.Item>
               )}
             />
-          </Card>
+          </ModernCard>
         </Col>
       </Row>
         </>

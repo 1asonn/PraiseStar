@@ -30,7 +30,11 @@ const StarDisplay = ({
             style={{ 
               color, 
               fontSize: iconSize,
-              animation: animated ? 'starTwinkle 2s ease-in-out infinite' : 'none'
+              animation: animated ? 'starTwinkle 2s ease-in-out infinite' : 'none',
+              filter: `drop-shadow(0 2px 4px ${color}60) drop-shadow(0 0 8px ${color}40)`,
+              textShadow: `0 1px 3px ${color}80, 0 0 6px ${color}60`,
+              transform: 'perspective(100px) rotateX(10deg)',
+              fontWeight: 'bold'
             }} 
           />
         )}
