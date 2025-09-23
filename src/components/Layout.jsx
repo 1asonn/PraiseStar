@@ -199,6 +199,11 @@ const Layout = ({ userType }) => {
       selectedKeys={[location.pathname]}
       items={menuItems}
       onClick={handleMenuClick}
+      className="modern-menu"
+      style={{
+        background: 'transparent',
+        border: 'none'
+      }}
     />
   )
 
@@ -212,38 +217,79 @@ const Layout = ({ userType }) => {
           onCollapse={setCollapsed}
           breakpoint="lg"
           collapsedWidth="0"
-          className="desktop-sider"
+          className="desktop-sider modern-sider"
           theme="light"
-          style={{ height: '100%', overflow: 'hidden' }}
+          style={{ 
+            height: '100%', 
+            overflow: 'hidden',
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            borderRight: '1px solid rgba(255, 255, 255, 0.2)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
+          }}
         >
-          <div style={{
-            height: 32,
-            margin: 16,
-            background: 'rgba(255, 255, 255, 0.2)',
-            borderRadius: 6,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'black',
-            fontWeight: 'bold'
-          }}>
+          <div 
+            className="sider-logo"
+            style={{
+              height: 64,
+              margin: 16,
+              background: 'rgba(102, 126, 234, 0.08)',
+              borderRadius: 12,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#333',
+              fontWeight: 'bold',
+              fontSize: collapsed ? 16 : 18,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              position: 'relative',
+              overflow: 'hidden',
+              cursor: 'pointer',
+              border: '1px solid rgba(102, 126, 234, 0.1)'
+            }}
+          >
             {collapsed ? '⭐' : '⭐ 赞赞星'}
           </div>
-          {siderContent}
+          <div style={{ padding: '0 8px' }}>
+            {siderContent}
+          </div>
         </Sider>
       )}
 
       {/* 移动端抽屉菜单 */}
       <Drawer
-        title="⭐ 赞赞星"
+        title={
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            fontWeight: 'bold',
+            fontSize: 18
+          }}>
+            ⭐ 赞赞星
+          </div>
+        }
         placement="left"
         onClose={() => setMobileMenuVisible(false)}
         open={mobileMenuVisible}
-        width={isMobile ? Math.min(250, window.innerWidth * 0.8) : 250}
-        className="mobile-drawer"
-        styles={{body:{padding:0}}}
+        width={isMobile ? Math.min(280, window.innerWidth * 0.85) : 280}
+        className="mobile-drawer modern-drawer"
+        styles={{
+          body: { padding: 0 },
+          header: { 
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
+          }
+        }}
       >
-        {siderContent}
+        <div style={{ padding: '16px 8px' }}>
+          {siderContent}
+        </div>
       </Drawer>
 
       <AntLayout style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -291,7 +337,7 @@ const Layout = ({ userType }) => {
               fontWeight: 'bold',
               lineHeight: 1.2
             }}>
-              {currentView === 'admin' ? '赞赞星后台管理' : '赞赞星'}
+              {currentView === 'admin' ? 'Praise Star Admin' : 'Praise Star'}
             </h2>
             {currentView !== 'admin' && (
               <div style={{
@@ -315,10 +361,18 @@ const Layout = ({ userType }) => {
               icon={<SwapOutlined />}
               onClick={handleViewToggle}
               size={isMobile ? 'small' : 'middle'}
+              className="modern-toggle-button"
               style={{
                 marginRight: isMobile ? 8 : 12,
-                background: currentView === 'admin' ? '#52c41a' : '#1890ff',
-                borderColor: currentView === 'admin' ? '#52c41a' : '#1890ff'
+                background: currentView === 'admin' 
+                  ? 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)' 
+                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                borderRadius: '12px',
+                boxShadow: currentView === 'admin' 
+                  ? '0 4px 16px rgba(82, 196, 26, 0.3)' 
+                  : '0 4px 16px rgba(102, 126, 234, 0.3)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
               }}
             >
               {!isMobile && (currentView === 'admin' ? '用户界面' : '管理界面')}
@@ -333,18 +387,43 @@ const Layout = ({ userType }) => {
                 onClick: handleUserMenuClick
               }}
               placement="bottomRight"
+              overlayStyle={{
+                background: 'rgba(255, 255, 255, 0.95)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: '12px',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+                border: '1px solid rgba(255, 255, 255, 0.2)'
+              }}
             >
-              <Space style={{ cursor: 'pointer' }} size={isMobile ? 4 : 8}>
+              <Space 
+                className="user-info-container"
+                style={{ 
+                  cursor: 'pointer',
+                  padding: '8px 12px',
+                  borderRadius: '12px',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                }} 
+                size={isMobile ? 4 : 8}
+              >
                 <Avatar 
                   icon={<UserOutlined />} 
                   size={isMobile ? 'small' : 'default'}
+                  style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3)'
+                  }}
                 />
                 {!isMobile && (
                   <span style={{ 
                     maxWidth: 100,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
+                    fontWeight: '500',
+                    color: '#333'
                   }}>
                     {user?.name}
                   </span>
