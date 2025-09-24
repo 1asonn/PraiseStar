@@ -1,4 +1,5 @@
 import { api } from './apiClient'
+import { getKeywordRankingsMock, getKeywordRankingsSummaryMock } from '../data/mockData'
 
 // 排行榜相关API服务
 export const rankingsService = {
@@ -241,6 +242,87 @@ export const rankingsService = {
     } catch (error) {
       console.error('重新计算排名失败:', error)
       throw error
+    }
+  },
+
+  /**
+   * 获取用户维度词条排行榜（公开）
+   * @param {Object} params - 查询参数
+   * @param {string} params.period - 时间周期（month/quarter/year），默认year
+   * @param {string} params.keyword - 特定词条名称，用于筛选特定词条的用户排行榜
+   * @param {number} params.page - 页码，默认1
+   * @param {number} params.limit - 每页数量，默认20
+   * @returns {Promise} 用户维度词条排行榜数据
+   */
+  getKeywordRankings: async (params = {}) => {
+    try {
+      console.log('调用后端接口获取词条排行榜:', params)
+      const response = await api.get('/rankings/keywords/public', params)
+      console.log('后端词条排行榜响应:', response)
+      return response
+    } catch (error) {
+      console.error('获取用户维度词条排行榜失败:', error)
+      
+      // 如果后端接口失败，降级到mock数据
+      console.log('降级使用mock数据')
+      const { period = 'year', keyword, page = 1, limit = 20 } = params
+      let mockData = getKeywordRankingsMock(period)
+      
+      // 如果指定了特定词条，则筛选该词条的数据
+      if (keyword && keyword !== '') {
+        mockData = mockData.filter(item => item.keyword === keyword)
+      }
+      
+      // 模拟分页
+      const startIndex = (page - 1) * limit
+      const endIndex = startIndex + limit
+      const paginatedData = mockData.slice(startIndex, endIndex)
+      
+      const fallbackResponse = {
+        success: true,
+        message: '获取用户维度词条排行榜成功（使用模拟数据）',
+        data: paginatedData,
+        pagination: {
+          page,
+          limit,
+          total: mockData.length,
+          pages: Math.ceil(mockData.length / limit)
+        }
+      }
+      
+      console.log('Mock keyword rankings fallback response:', fallbackResponse)
+      return fallbackResponse
+    }
+  },
+
+  /**
+   * 获取用户维度词条排行榜摘要
+   * @param {Object} params - 查询参数
+   * @param {string} params.period - 时间周期（month/quarter/year），默认year
+   * @returns {Promise} 用户维度词条排行榜摘要数据
+   */
+  getKeywordRankingsSummary: async (params = {}) => {
+    try {
+      console.log('调用后端接口获取词条排行榜摘要:', params)
+      const response = await api.get('/rankings/keywords/public/summary', params)
+      console.log('后端词条排行榜摘要响应:', response)
+      return response
+    } catch (error) {
+      console.error('获取用户维度词条排行榜摘要失败:', error)
+      
+      // 如果后端接口失败，降级到mock数据
+      console.log('降级使用mock数据')
+      const { period = 'year' } = params
+      const mockData = getKeywordRankingsSummaryMock(period)
+      
+      const fallbackResponse = {
+        success: true,
+        message: '获取用户维度词条排行榜摘要成功（使用模拟数据）',
+        data: mockData
+      }
+      
+      console.log('Mock keyword rankings summary fallback response:', fallbackResponse)
+      return fallbackResponse
     }
   }
 }

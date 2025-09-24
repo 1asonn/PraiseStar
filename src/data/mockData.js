@@ -305,3 +305,609 @@ export const getSystemStats = () => {
     totalRemainingThisMonth
   }
 }
+
+// Mock词条排行榜数据
+export const getKeywordRankingsMock = (period = 'year') => {
+  const keywordData = {
+    year: [
+      {
+        keyword: '创新',
+        users: [
+          {
+            user_id: 4,
+            user_name: '耿豪',
+            user_department: '总经理办',
+            user_position: '总经理',
+            count: 15,
+            total_stars: 75,
+            avg_stars: 5.0,
+            ranking: 1
+          },
+          {
+            user_id: 2,
+            user_name: '王倩',
+            user_department: '人力行政部',
+            user_position: 'HR专员',
+            count: 12,
+            total_stars: 60,
+            avg_stars: 5.0,
+            ranking: 2
+          },
+          {
+            user_id: 6,
+            user_name: '张三',
+            user_department: '研发中心',
+            user_position: '前端工程师',
+            count: 8,
+            total_stars: 40,
+            avg_stars: 5.0,
+            ranking: 3
+          },
+          {
+            user_id: 7,
+            user_name: '李四',
+            user_department: '研发中心',
+            user_position: '后端工程师',
+            count: 6,
+            total_stars: 30,
+            avg_stars: 5.0,
+            ranking: 4
+          }
+        ],
+        total_count: 41,
+        total_stars: 205,
+        unique_users: 4
+      },
+      {
+        keyword: '协作',
+        users: [
+          {
+            user_id: 1,
+            user_name: '袁倩倩',
+            user_department: '人力行政部',
+            user_position: '部门负责人',
+            count: 18,
+            total_stars: 90,
+            avg_stars: 5.0,
+            ranking: 1
+          },
+          {
+            user_id: 3,
+            user_name: '李婷',
+            user_department: '人力行政部',
+            user_position: 'HR专员',
+            count: 14,
+            total_stars: 70,
+            avg_stars: 5.0,
+            ranking: 2
+          },
+          {
+            user_id: 5,
+            user_name: '超越',
+            user_department: '总经理办',
+            user_position: '副总经理',
+            count: 10,
+            total_stars: 50,
+            avg_stars: 5.0,
+            ranking: 3
+          },
+          {
+            user_id: 8,
+            user_name: '王五',
+            user_department: '市场部',
+            user_position: '市场专员',
+            count: 7,
+            total_stars: 35,
+            avg_stars: 5.0,
+            ranking: 4
+          }
+        ],
+        total_count: 49,
+        total_stars: 245,
+        unique_users: 4
+      },
+      {
+        keyword: '领导力',
+        users: [
+          {
+            user_id: 4,
+            user_name: '耿豪',
+            user_department: '总经理办',
+            user_position: '总经理',
+            count: 20,
+            total_stars: 100,
+            avg_stars: 5.0,
+            ranking: 1
+          },
+          {
+            user_id: 5,
+            user_name: '超越',
+            user_department: '总经理办',
+            user_position: '副总经理',
+            count: 16,
+            total_stars: 80,
+            avg_stars: 5.0,
+            ranking: 2
+          },
+          {
+            user_id: 1,
+            user_name: '袁倩倩',
+            user_department: '人力行政部',
+            user_position: '部门负责人',
+            count: 12,
+            total_stars: 60,
+            avg_stars: 5.0,
+            ranking: 3
+          }
+        ],
+        total_count: 48,
+        total_stars: 240,
+        unique_users: 3
+      },
+      {
+        keyword: '执行力',
+        users: [
+          {
+            user_id: 2,
+            user_name: '王倩',
+            user_department: '人力行政部',
+            user_position: 'HR专员',
+            count: 22,
+            total_stars: 110,
+            avg_stars: 5.0,
+            ranking: 1
+          },
+          {
+            user_id: 7,
+            user_name: '李四',
+            user_department: '研发中心',
+            user_position: '后端工程师',
+            count: 18,
+            total_stars: 90,
+            avg_stars: 5.0,
+            ranking: 2
+          },
+          {
+            user_id: 6,
+            user_name: '张三',
+            user_department: '研发中心',
+            user_position: '前端工程师',
+            count: 14,
+            total_stars: 70,
+            avg_stars: 5.0,
+            ranking: 3
+          },
+          {
+            user_id: 3,
+            user_name: '李婷',
+            user_department: '人力行政部',
+            user_position: 'HR专员',
+            count: 9,
+            total_stars: 45,
+            avg_stars: 5.0,
+            ranking: 4
+          }
+        ],
+        total_count: 63,
+        total_stars: 315,
+        unique_users: 4
+      },
+      {
+        keyword: '学习能力',
+        users: [
+          {
+            user_id: 6,
+            user_name: '张三',
+            user_department: '研发中心',
+            user_position: '前端工程师',
+            count: 16,
+            total_stars: 80,
+            avg_stars: 5.0,
+            ranking: 1
+          },
+          {
+            user_id: 7,
+            user_name: '李四',
+            user_department: '研发中心',
+            user_position: '后端工程师',
+            count: 13,
+            total_stars: 65,
+            avg_stars: 5.0,
+            ranking: 2
+          },
+          {
+            user_id: 8,
+            user_name: '王五',
+            user_department: '市场部',
+            user_position: '市场专员',
+            count: 11,
+            total_stars: 55,
+            avg_stars: 5.0,
+            ranking: 3
+          }
+        ],
+        total_count: 40,
+        total_stars: 200,
+        unique_users: 3
+      }
+    ],
+    month: [
+      {
+        keyword: '创新',
+        users: [
+          {
+            user_id: 4,
+            user_name: '耿豪',
+            user_department: '总经理办',
+            user_position: '总经理',
+            count: 5,
+            total_stars: 25,
+            avg_stars: 5.0,
+            ranking: 1
+          },
+          {
+            user_id: 2,
+            user_name: '王倩',
+            user_department: '人力行政部',
+            user_position: 'HR专员',
+            count: 4,
+            total_stars: 20,
+            avg_stars: 5.0,
+            ranking: 2
+          },
+          {
+            user_id: 6,
+            user_name: '张三',
+            user_department: '研发中心',
+            user_position: '前端工程师',
+            count: 3,
+            total_stars: 15,
+            avg_stars: 5.0,
+            ranking: 3
+          }
+        ],
+        total_count: 12,
+        total_stars: 60,
+        unique_users: 3
+      },
+      {
+        keyword: '协作',
+        users: [
+          {
+            user_id: 1,
+            user_name: '袁倩倩',
+            user_department: '人力行政部',
+            user_position: '部门负责人',
+            count: 6,
+            total_stars: 30,
+            avg_stars: 5.0,
+            ranking: 1
+          },
+          {
+            user_id: 3,
+            user_name: '李婷',
+            user_department: '人力行政部',
+            user_position: 'HR专员',
+            count: 4,
+            total_stars: 20,
+            avg_stars: 5.0,
+            ranking: 2
+          },
+          {
+            user_id: 5,
+            user_name: '超越',
+            user_department: '总经理办',
+            user_position: '副总经理',
+            count: 3,
+            total_stars: 15,
+            avg_stars: 5.0,
+            ranking: 3
+          }
+        ],
+        total_count: 13,
+        total_stars: 65,
+        unique_users: 3
+      }
+    ],
+    quarter: [
+      {
+        keyword: '创新',
+        users: [
+          {
+            user_id: 4,
+            user_name: '耿豪',
+            user_department: '总经理办',
+            user_position: '总经理',
+            count: 12,
+            total_stars: 60,
+            avg_stars: 5.0,
+            ranking: 1
+          },
+          {
+            user_id: 2,
+            user_name: '王倩',
+            user_department: '人力行政部',
+            user_position: 'HR专员',
+            count: 9,
+            total_stars: 45,
+            avg_stars: 5.0,
+            ranking: 2
+          },
+          {
+            user_id: 6,
+            user_name: '张三',
+            user_department: '研发中心',
+            user_position: '前端工程师',
+            count: 6,
+            total_stars: 30,
+            avg_stars: 5.0,
+            ranking: 3
+          }
+        ],
+        total_count: 27,
+        total_stars: 135,
+        unique_users: 3
+      },
+      {
+        keyword: '协作',
+        users: [
+          {
+            user_id: 1,
+            user_name: '袁倩倩',
+            user_department: '人力行政部',
+            user_position: '部门负责人',
+            count: 15,
+            total_stars: 75,
+            avg_stars: 5.0,
+            ranking: 1
+          },
+          {
+            user_id: 3,
+            user_name: '李婷',
+            user_department: '人力行政部',
+            user_position: 'HR专员',
+            count: 11,
+            total_stars: 55,
+            avg_stars: 5.0,
+            ranking: 2
+          },
+          {
+            user_id: 5,
+            user_name: '超越',
+            user_department: '总经理办',
+            user_position: '副总经理',
+            count: 8,
+            total_stars: 40,
+            avg_stars: 5.0,
+            ranking: 3
+          }
+        ],
+        total_count: 34,
+        total_stars: 170,
+        unique_users: 3
+      }
+    ]
+  }
+
+  return keywordData[period] || []
+}
+
+// Mock词条排行榜摘要数据
+export const getKeywordRankingsSummaryMock = (period = 'year') => {
+  const summaryData = {
+    year: {
+      period: 'year',
+      summary: {
+        total_records: 241,
+        total_keywords: 5,
+        active_users: 8,
+        total_users: 8,
+        user_activity_rate: 100
+      },
+      keywordSummary: [
+        {
+          keyword: '创新',
+          total_count: 41,
+          total_stars: 205,
+          unique_users: 4,
+          avg_stars_per_user: 51.25,
+          top_user: {
+            user_id: 4,
+            user_name: '耿豪',
+            count: 15,
+            total_stars: 75
+          }
+        },
+        {
+          keyword: '协作',
+          total_count: 49,
+          total_stars: 245,
+          unique_users: 4,
+          avg_stars_per_user: 61.25,
+          top_user: {
+            user_id: 1,
+            user_name: '袁倩倩',
+            count: 18,
+            total_stars: 90
+          }
+        },
+        {
+          keyword: '领导力',
+          total_count: 48,
+          total_stars: 240,
+          unique_users: 3,
+          avg_stars_per_user: 80.0,
+          top_user: {
+            user_id: 4,
+            user_name: '耿豪',
+            count: 20,
+            total_stars: 100
+          }
+        },
+        {
+          keyword: '执行力',
+          total_count: 63,
+          total_stars: 315,
+          unique_users: 4,
+          avg_stars_per_user: 78.75,
+          top_user: {
+            user_id: 2,
+            user_name: '王倩',
+            count: 22,
+            total_stars: 110
+          }
+        },
+        {
+          keyword: '学习能力',
+          total_count: 40,
+          total_stars: 200,
+          unique_users: 3,
+          avg_stars_per_user: 66.67,
+          top_user: {
+            user_id: 6,
+            user_name: '张三',
+            count: 16,
+            total_stars: 80
+          }
+        }
+      ],
+      topKeywords: [
+        {
+          keyword: '执行力',
+          total_count: 63,
+          total_stars: 315,
+          unique_users: 4,
+          avg_stars_per_user: 78.75,
+          top_user: {
+            user_id: 2,
+            user_name: '王倩',
+            count: 22,
+            total_stars: 110
+          }
+        },
+        {
+          keyword: '协作',
+          total_count: 49,
+          total_stars: 245,
+          unique_users: 4,
+          avg_stars_per_user: 61.25,
+          top_user: {
+            user_id: 1,
+            user_name: '袁倩倩',
+            count: 18,
+            total_stars: 90
+          }
+        },
+        {
+          keyword: '领导力',
+          total_count: 48,
+          total_stars: 240,
+          unique_users: 3,
+          avg_stars_per_user: 80.0,
+          top_user: {
+            user_id: 4,
+            user_name: '耿豪',
+            count: 20,
+            total_stars: 100
+          }
+        }
+      ],
+      distributionStats: {
+        total_keywords: 5,
+        most_popular_keyword: {
+          keyword: '执行力',
+          total_count: 63,
+          total_stars: 315,
+          unique_users: 4,
+          avg_stars_per_user: 78.75
+        },
+        least_popular_keyword: {
+          keyword: '学习能力',
+          total_count: 40,
+          total_stars: 200,
+          unique_users: 3,
+          avg_stars_per_user: 66.67
+        },
+        avg_users_per_keyword: 3.6
+      }
+    },
+    month: {
+      period: 'month',
+      summary: {
+        total_records: 25,
+        total_keywords: 2,
+        active_users: 6,
+        total_users: 8,
+        user_activity_rate: 75
+      },
+      keywordSummary: [
+        {
+          keyword: '创新',
+          total_count: 12,
+          total_stars: 60,
+          unique_users: 3,
+          avg_stars_per_user: 20.0,
+          top_user: {
+            user_id: 4,
+            user_name: '耿豪',
+            count: 5,
+            total_stars: 25
+          }
+        },
+        {
+          keyword: '协作',
+          total_count: 13,
+          total_stars: 65,
+          unique_users: 3,
+          avg_stars_per_user: 21.67,
+          top_user: {
+            user_id: 1,
+            user_name: '袁倩倩',
+            count: 6,
+            total_stars: 30
+          }
+        }
+      ]
+    },
+    quarter: {
+      period: 'quarter',
+      summary: {
+        total_records: 61,
+        total_keywords: 2,
+        active_users: 6,
+        total_users: 8,
+        user_activity_rate: 75
+      },
+      keywordSummary: [
+        {
+          keyword: '创新',
+          total_count: 27,
+          total_stars: 135,
+          unique_users: 3,
+          avg_stars_per_user: 45.0,
+          top_user: {
+            user_id: 4,
+            user_name: '耿豪',
+            count: 12,
+            total_stars: 60
+          }
+        },
+        {
+          keyword: '协作',
+          total_count: 34,
+          total_stars: 170,
+          unique_users: 3,
+          avg_stars_per_user: 56.67,
+          top_user: {
+            user_id: 1,
+            user_name: '袁倩倩',
+            count: 15,
+            total_stars: 75
+          }
+        }
+      ]
+    }
+  }
+
+  return summaryData[period] || summaryData.year
+}

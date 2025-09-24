@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Card,
   Table,
-  Avatar,
   Tag,
   Row,
   Col,
@@ -15,9 +14,10 @@ import ModernCard from '../../components/ModernCard'
 import {
   TrophyOutlined,
   StarOutlined,
-  CrownOutlined,
   RiseOutlined,
-  UserOutlined
+  TagOutlined,
+  FireOutlined,
+  TeamOutlined
 } from '@ant-design/icons'
 import { useAuth } from '../../contexts/AuthContext'
 import { rankingsService } from '../../services/rankingsService'
@@ -60,6 +60,30 @@ const Ranking = () => {
     quarter: null
   })
   const [forceUpdate, setForceUpdate] = useState(0)
+  
+  // 词条排行榜相关状态
+  const [keywordRankings, setKeywordRankings] = useState({
+    year: [],
+    month: [],
+    quarter: []
+  })
+  const [keywordLoading, setKeywordLoading] = useState(false)
+  const [keywordSummary, setKeywordSummary] = useState({
+    year: null,
+    month: null,
+    quarter: null
+  })
+  const [selectedKeyword, setSelectedKeyword] = useState('')
+  const [keywordPagination, setKeywordPagination] = useState({
+    year: { current: 1, pageSize: 10, total: 0 },
+    month: { current: 1, pageSize: 10, total: 0 },
+    quarter: { current: 1, pageSize: 10, total: 0 }
+  })
+  const [keywordError, setKeywordError] = useState({
+    year: null,
+    month: null,
+    quarter: null
+  })
 
   // 获取排名数据
   const fetchRankings = async (period, page = 1, pageSize = 10, append = false) => {
@@ -154,6 +178,141 @@ const Ranking = () => {
     }
   }
 
+  // 获取词条排行榜数据
+  const fetchKeywordRankings = async (period, page = 1, pageSize = 10) => {
+    if (!user?.id) return
+    
+    setKeywordLoading(true)
+    
+    // 清除之前的错误状态
+    setKeywordError(prev => ({
+      ...prev,
+      [period]: null
+    }))
+    
+    try {
+      console.log(`Fetching keyword rankings for period: ${period}, page: ${page}, pageSize: ${pageSize}`)
+      const params = {
+        period,
+        page,
+        limit: pageSize
+      }
+      
+      // 如果选择了特定词条，添加到参数中
+      if (selectedKeyword) {
+        params.keyword = selectedKeyword
+      }
+      
+      const response = await rankingsService.getKeywordRankings(params)
+      console.log(`Keyword rankings response for ${period}:`, response)
+      
+      if (response.success) {
+        const keywordData = response.data || []
+        setKeywordRankings(prev => ({
+          ...prev,
+          [period]: keywordData
+        }))
+        
+        // 更新分页信息
+        if (response.pagination) {
+          setKeywordPagination(prev => ({
+            ...prev,
+            [period]: {
+              current: response.pagination.page || page,
+              pageSize: response.pagination.limit || pageSize,
+              total: response.pagination.total || 0
+            }
+          }))
+        }
+        
+        // 如果响应中包含meta信息，更新摘要数据（用于筛选功能）
+        if (response.meta && response.meta.keywordSummary) {
+          setKeywordSummary(prev => ({
+            ...prev,
+            [period]: {
+              ...prev[period],
+              keywordSummary: response.meta.keywordSummary
+            }
+          }))
+        }
+        
+        // 清除错误状态
+        setKeywordError(prev => ({
+          ...prev,
+          [period]: null
+        }))
+      } else {
+        const errorMsg = response.message || '获取词条排行榜失败'
+        setKeywordError(prev => ({
+          ...prev,
+          [period]: errorMsg
+        }))
+        message.error(errorMsg)
+      }
+    } catch (error) {
+      console.error('获取词条排行榜失败:', error)
+      
+      // 根据错误类型显示不同的错误信息
+      let errorMessage = '获取词条排行榜失败，请稍后重试'
+      if (error.response) {
+        // 服务器响应错误
+        const status = error.response.status
+        if (status === 401) {
+          errorMessage = '未授权访问，请重新登录'
+        } else if (status === 400) {
+          errorMessage = '请求参数错误'
+        } else if (status === 500) {
+          errorMessage = '服务器内部错误，请稍后重试'
+        } else {
+          errorMessage = error.response.data?.message || `服务器错误 (${status})`
+        }
+      } else if (error.request) {
+        // 网络错误
+        errorMessage = '网络连接失败，请检查网络连接'
+      } else {
+        // 其他错误
+        errorMessage = error.message || '未知错误'
+      }
+      
+      // 设置错误状态
+      setKeywordError(prev => ({
+        ...prev,
+        [period]: errorMessage
+      }))
+      
+      message.error(errorMessage)
+      
+      // 如果获取失败，清空当前数据
+      setKeywordRankings(prev => ({
+        ...prev,
+        [period]: []
+      }))
+    } finally {
+      setKeywordLoading(false)
+    }
+  }
+
+  // 获取词条排行榜摘要
+  const fetchKeywordSummary = async (period) => {
+    if (!user?.id) return
+    
+    try {
+      const response = await rankingsService.getKeywordRankingsSummary({ period })
+      if (response.success) {
+        setKeywordSummary(prev => ({
+          ...prev,
+          [period]: response.data
+        }))
+      } else {
+        console.warn('获取词条排行榜摘要失败:', response.message)
+        // 摘要失败不影响主功能，只记录警告
+      }
+    } catch (error) {
+      console.error('获取词条排行榜摘要失败:', error)
+      // 摘要失败不影响主功能，只记录错误
+    }
+  }
+
   // 初始化数据
   useEffect(() => {
     if (user?.id) {
@@ -163,8 +322,32 @@ const Ranking = () => {
       fetchMyRanking('year')
       fetchMyRanking('month')
       fetchMyRanking('quarter')
+      
+      // 获取词条排行榜数据
+      fetchKeywordRankings('year')
+      fetchKeywordRankings('month')
+      fetchKeywordRankings('quarter')
+      fetchKeywordSummary('year')
+      fetchKeywordSummary('month')
+      fetchKeywordSummary('quarter')
     }
   }, [user?.id])
+
+  // 当选择的词条改变时，重新获取数据
+  useEffect(() => {
+    if (user?.id && selectedKeyword !== undefined) {
+      // 重置分页到第一页
+      setKeywordPagination(prev => ({
+        year: { ...prev.year, current: 1 },
+        month: { ...prev.month, current: 1 },
+        quarter: { ...prev.quarter, current: 1 }
+      }))
+      
+      fetchKeywordRankings('year', 1, 10)
+      fetchKeywordRankings('month', 1, 10)
+      fetchKeywordRankings('quarter', 1, 10)
+    }
+  }, [selectedKeyword])
 
   // 监听窗口大小变化
   useEffect(() => {
@@ -180,6 +363,290 @@ const Ranking = () => {
   const userYearRank = myRanking.year
   const userMonthRank = myRanking.month
   const userQuarterRank = myRanking.quarter
+
+  // 词条排行榜卡片组件
+  const KeywordRankingCard = ({ keywordData }) => (
+    <Card
+      size="small"
+      style={{ 
+        marginBottom: 20,
+        borderRadius: '16px',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+        border: '1px solid #f0f0f0',
+        overflow: 'hidden',
+        transition: 'all 0.3s ease',
+        background: 'linear-gradient(135deg, #ffffff 0%, #fafbff 100%)'
+      }}
+      bodyStyle={{ padding: 0 }}
+    >
+      {/* 词条标题区域 */}
+      <div style={{
+        padding: isMobile ? '16px' : '20px',
+        background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
+        color: 'white',
+        position: 'relative'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 12 : 16 }}>
+            <div style={{ 
+              width: isMobile ? 40 : 48, 
+              height: isMobile ? 40 : 48, 
+              borderRadius: '50%', 
+              backgroundColor: 'rgba(255, 255, 255, 0.2)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              fontSize: isMobile ? 18 : 22,
+              fontWeight: 'bold',
+              flexShrink: 0,
+              border: '2px solid rgba(255, 255, 255, 0.3)'
+            }}>
+              {keywordData.keyword.charAt(0)}
+            </div>
+            <div>
+              <h3 style={{ 
+                margin: 0,
+                fontWeight: 'bold', 
+                fontSize: isMobile ? 18 : 20, 
+                color: 'white',
+                textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
+              }}>
+                {keywordData.keyword}
+              </h3>
+              <div style={{
+                display: 'flex',
+                gap: isMobile ? 6 : 8,
+                marginTop: 6
+              }}>
+                <div style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  color: 'white',
+                  padding: isMobile ? '2px 8px' : '4px 10px',
+                  borderRadius: '12px',
+                  fontSize: isMobile ? 11 : 12,
+                  fontWeight: '500',
+                  border: '1px solid rgba(255, 255, 255, 0.2)'
+                }}>
+                  {keywordData.total_count}次
+                </div>
+                <div style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  color: 'white',
+                  padding: isMobile ? '2px 8px' : '4px 10px',
+                  borderRadius: '12px',
+                  fontSize: isMobile ? 11 : 12,
+                  fontWeight: '500',
+                  border: '1px solid rgba(255, 255, 255, 0.2)'
+                }}>
+                  {keywordData.unique_users}人
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* 右侧统计信息 */}
+          <div style={{ 
+            textAlign: 'right',
+            minWidth: isMobile ? 90 : 110
+          }}>
+            <div style={{ 
+              fontSize: isMobile ? 16 : 18,
+              fontWeight: 'bold',
+              marginBottom: 4
+            }}>
+              {keywordData.total_stars} ⭐
+            </div>
+            <div style={{ 
+              fontSize: isMobile ? 11 : 12, 
+              opacity: 0.9,
+              fontWeight: '500'
+            }}>
+              平均 {(keywordData.total_stars / keywordData.total_count).toFixed(1)}⭐/次
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* 用户列表区域 */}
+      <div style={{
+        padding: isMobile ? '16px' : '20px',
+        paddingTop: 16
+      }}>
+        {keywordData.users.map((user, index) => (
+          <div
+            key={user.user_id}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: isMobile ? '12px 8px' : '16px 12px',
+              backgroundColor: user.user_id === user?.id ? '#f0f8ff' : 'transparent',
+              borderRadius: '12px',
+              marginBottom: index < keywordData.users.length - 1 ? '8px' : '0',
+              transition: 'all 0.3s ease',
+              border: user.user_id === user?.id ? '2px solid #1890ff' : '2px solid transparent',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+          >
+            {/* 背景装饰 */}
+            {user.user_id === user?.id && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'linear-gradient(135deg, rgba(24, 144, 255, 0.05) 0%, rgba(24, 144, 255, 0.02) 100%)',
+                zIndex: 0
+              }} />
+            )}
+            {/* 左侧：排名 + 用户信息 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 12 : 16, flex: 1, minWidth: 0, position: 'relative', zIndex: 1 }}>
+              {/* 排名 */}
+              <div style={{
+                width: isMobile ? 32 : 36,
+                height: isMobile ? 32 : 36,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                ...getRankStyle(user.ranking, isMobile),
+                fontSize: isMobile ? 12 : 14,
+                boxShadow: user.ranking <= 3 ? '0 2px 8px rgba(24, 144, 255, 0.3)' : '0 1px 4px rgba(0, 0, 0, 0.1)'
+              }}>
+                {getRankDisplay(user.ranking)}
+              </div>
+              
+              {/* 用户信息 */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: isMobile ? 6 : 8, 
+                  marginBottom: isMobile ? 4 : 6,
+                  flexWrap: 'wrap'
+                }}>
+                  <span style={{
+                    fontWeight: user.user_id === user?.id ? 'bold' : '600',
+                    color: user.user_id === user?.id ? '#1890ff' : '#262626',
+                    fontSize: isMobile ? 14 : 16,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {user.user_name}
+                  </span>
+                  {user.user_id === user?.id && (
+                    <div style={{
+                      backgroundColor: '#1890ff',
+                      color: 'white',
+                      padding: isMobile ? '2px 6px' : '3px 8px',
+                      borderRadius: '10px',
+                      fontSize: isMobile ? 10 : 11,
+                      fontWeight: '500',
+                      border: '1px solid #1890ff'
+                    }}>
+                      我
+                    </div>
+                  )}
+                </div>
+                <div style={{ 
+                  display: 'flex', 
+                  gap: isMobile ? 4 : 6, 
+                  fontSize: isMobile ? 11 : 12,
+                  flexWrap: 'wrap'
+                }}>
+                  <div style={{
+                    backgroundColor: '#f0f0f0',
+                    color: '#595959',
+                    padding: isMobile ? '2px 6px' : '3px 8px',
+                    borderRadius: '8px',
+                    fontSize: isMobile ? 10 : 11,
+                    fontWeight: '500'
+                  }}>
+                    {user.user_department}
+                  </div>
+                  <div style={{
+                    backgroundColor: '#f0f0f0',
+                    color: '#595959',
+                    padding: isMobile ? '2px 6px' : '3px 8px',
+                    borderRadius: '8px',
+                    fontSize: isMobile ? 10 : 11,
+                    fontWeight: '500'
+                  }}>
+                    {user.user_position}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* 右侧：统计信息 */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: isMobile ? 12 : 16, 
+              flexShrink: 0,
+              position: 'relative',
+              zIndex: 1
+            }}>
+              {/* 获得次数 */}
+              <div style={{ 
+                textAlign: 'center',
+                backgroundColor: user.user_id === user?.id ? 'rgba(24, 144, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                padding: isMobile ? '8px 6px' : '10px 8px',
+                borderRadius: '10px',
+                minWidth: isMobile ? 50 : 60,
+                border: user.user_id === user?.id ? '1px solid rgba(24, 144, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.1)'
+              }}>
+                <div style={{ 
+                  fontSize: isMobile ? 16 : 18, 
+                  fontWeight: 'bold', 
+                  color: user.user_id === user?.id ? '#1890ff' : '#262626',
+                  marginBottom: 2
+                }}>
+                  {user.count}
+                </div>
+                <div style={{ 
+                  fontSize: isMobile ? 10 : 11, 
+                  color: user.user_id === user?.id ? '#1890ff' : '#8c8c8c',
+                  fontWeight: '500'
+                }}>
+                  次
+                </div>
+              </div>
+              
+              {/* 总星数 */}
+              <div style={{ 
+                textAlign: 'center',
+                backgroundColor: user.user_id === user?.id ? 'rgba(24, 144, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                padding: isMobile ? '8px 6px' : '10px 8px',
+                borderRadius: '10px',
+                minWidth: isMobile ? 50 : 60,
+                border: user.user_id === user?.id ? '1px solid rgba(24, 144, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.1)'
+              }}>
+                <div style={{ 
+                  fontSize: isMobile ? 16 : 18, 
+                  fontWeight: 'bold', 
+                  color: user.user_id === user?.id ? '#1890ff' : '#262626',
+                  marginBottom: 2
+                }}>
+                  {user.total_stars}
+                </div>
+                <div style={{ 
+                  fontSize: isMobile ? 10 : 11, 
+                  color: user.user_id === user?.id ? '#1890ff' : '#8c8c8c',
+                  fontWeight: '500'
+                }}>
+                  总星
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
 
   // 移动端排行榜卡片组件
   const RankingCard = ({ item, index }) => (
@@ -202,24 +669,14 @@ const Ranking = () => {
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center',
-            backgroundColor: item.ranking <= 3 ? '#fadb14' : '#f5f5f5',
-            color: item.ranking <= 3 ? '#fff' : '#666',
-            fontWeight: 'bold',
-            fontSize: 14
+            ...getRankStyle(item.ranking, false)
           }}>
-            {item.ranking <= 3 ? getRankIcon(item.ranking) : item.ranking}
+            {getRankDisplay(item.ranking)}
           </div>
           
           {/* 用户信息 */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <Avatar 
-                size="small" 
-                icon={<UserOutlined />}
-                style={{ 
-                  backgroundColor: item.id === user.id ? '#1890ff' : item.is_admin ? '#fa8c16' : '#87d068' 
-                }}
-              />
               <span style={{ 
                 fontWeight: item.id === user.id ? 'bold' : 'normal',
                 color: item.id === user.id ? '#1890ff' : 'inherit',
@@ -227,12 +684,32 @@ const Ranking = () => {
               }}>
                 {item.name}
               </span>
-              {item.id === user.id && <Tag color="blue" size="small">我</Tag>}
-              {item.is_admin && <Tag color="orange" size="small">管理员</Tag>}
+              {item.id === user.id && (
+                <Tag color="default" size="small" style={{ 
+                  backgroundColor: '#e6f7ff',
+                  color: '#1890ff',
+                  border: '1px solid #91d5ff'
+                }}>我</Tag>
+              )}
+              {item.is_admin && (
+                <Tag color="default" size="small" style={{ 
+                  backgroundColor: '#fff7e6',
+                  color: '#fa8c16',
+                  border: '1px solid #ffd591'
+                }}>管理员</Tag>
+              )}
             </div>
             <div style={{ display: 'flex', gap: 8, fontSize: 12, color: '#666' }}>
-              <Tag color="geekblue" size="small">{item.department}</Tag>
-              <Tag color="cyan" size="small">{item.position}</Tag>
+              <Tag color="default" size="small" style={{ 
+                backgroundColor: '#f5f5f5',
+                color: '#666',
+                border: '1px solid #e8e8e8'
+              }}>{item.department}</Tag>
+              <Tag color="default" size="small" style={{ 
+                backgroundColor: '#f5f5f5',
+                color: '#666',
+                border: '1px solid #e8e8e8'
+              }}>{item.position}</Tag>
             </div>
           </div>
         </div>
@@ -255,20 +732,40 @@ const Ranking = () => {
     </Card>
   )
 
-  // 排名图标
-  const getRankIcon = (rank) => {
-    if (rank === 1) return <CrownOutlined style={{ color: '#fadb14' }} />
-    if (rank === 2) return <TrophyOutlined style={{ color: '#d9d9d9' }} />
-    if (rank === 3) return <TrophyOutlined style={{ color: '#d46b08' }} />
-    return <span style={{ color: '#666' }}>{rank}</span>
+  // 简化的排名显示
+  const getRankDisplay = (rank) => {
+    return rank
   }
 
-  // 排名颜色
+  // 排名颜色 - 简化方案
   const getRankColor = (rank) => {
-    if (rank === 1) return '#fadb14'
-    if (rank === 2) return '#d9d9d9'
-    if (rank === 3) return '#d46b08'
+    if (rank <= 3) return '#1890ff'
     return '#666'
+  }
+
+  // 获取排名样式 - 简化颜色方案
+  const getRankStyle = (rank, isMobile = false) => {
+    const fontSize = isMobile ? 11 : 13
+    
+    if (rank <= 3) {
+      return {
+        backgroundColor: '#1890ff',
+        color: '#fff',
+        border: '1px solid #1890ff',
+        boxShadow: '0 2px 4px rgba(24, 144, 255, 0.2)',
+        fontSize,
+        fontWeight: 'bold'
+      }
+    } else {
+      return {
+        backgroundColor: '#f5f5f5',
+        color: '#666',
+        border: '1px solid #e8e8e8',
+        boxShadow: 'none',
+        fontSize: fontSize - 1,
+        fontWeight: 'normal'
+      }
+    }
   }
 
   // 表格列定义
@@ -289,7 +786,7 @@ const Ranking = () => {
           fontWeight: record.id === user.id ? 'bold' : 'normal',
           color: record.id === user.id ? '#1890ff' : getRankColor(ranking)
         }}>
-          {getRankIcon(ranking)}
+          {getRankDisplay(ranking)}
         </div>
       )
     },
@@ -298,23 +795,26 @@ const Ranking = () => {
       dataIndex: 'name',
       key: 'name',
       render: (name, record) => (
-        <Space>
-          <Avatar 
-            size="small" 
-            icon={<UserOutlined />}
-            style={{ 
-              backgroundColor: record.id === user.id ? '#1890ff' : record.is_admin ? '#fa8c16' : '#87d068' 
-            }}
-          />
+        <div>
           <span style={{ 
             fontWeight: record.id === user.id ? 'bold' : 'normal',
             color: record.id === user.id ? '#1890ff' : 'inherit'
           }}>
             {name}
-            {record.id === user.id && <Tag color="blue" size="small" style={{ marginLeft: 8 }}>我</Tag>}
-            {record.is_admin && <Tag color="orange" size="small" style={{ marginLeft: 8 }}>管理员</Tag>}
+            {record.id === user.id && <Tag color="default" size="small" style={{ 
+              marginLeft: 8,
+              backgroundColor: '#e6f7ff',
+              color: '#1890ff',
+              border: '1px solid #91d5ff'
+            }}>我</Tag>}
+            {record.is_admin && <Tag color="default" size="small" style={{ 
+              marginLeft: 8,
+              backgroundColor: '#fff7e6',
+              color: '#fa8c16',
+              border: '1px solid #ffd591'
+            }}>管理员</Tag>}
           </span>
-        </Space>
+        </div>
       )
     },
     {
@@ -322,14 +822,26 @@ const Ranking = () => {
       dataIndex: 'department',
       key: 'department',
       responsive: ['lg'], // 大屏幕以上显示
-      render: (department) => <Tag color="geekblue">{department}</Tag>
+      render: (department) => (
+        <Tag color="default" style={{ 
+          backgroundColor: '#f5f5f5',
+          color: '#666',
+          border: '1px solid #e8e8e8'
+        }}>{department}</Tag>
+      )
     },
     {
       title: '职位',
       dataIndex: 'position',
       key: 'position',
       responsive: ['xl'], // 超大屏幕以上显示
-      render: (position) => <Tag color="cyan">{position}</Tag>
+      render: (position) => (
+        <Tag color="default" style={{ 
+          backgroundColor: '#f5f5f5',
+          color: '#666',
+          border: '1px solid #e8e8e8'
+        }}>{position}</Tag>
+      )
     },
     {
       title: '获赞数量',
@@ -388,6 +900,348 @@ const Ranking = () => {
       return () => container.removeEventListener('scroll', handleScroll)
     }
   }, [handleScroll, isMobile])
+
+  // 渲染词条排行榜内容
+  const renderKeywordRankingContent = (period) => {
+    const data = keywordRankings[period]
+    const summary = keywordSummary[period]
+    const paginationInfo = keywordPagination[period]
+    
+    if (isMobile) {
+      // 移动端卡片视图
+      return (
+        <div>
+          {/* 摘要信息 */}
+          {summary && (
+            <Card size="small" style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 4 }}>
+                    词条统计概览
+                  </div>
+                  <div style={{ fontSize: 12, color: '#666' }}>
+                    共 {summary.summary?.total_keywords || 0} 个词条，
+                    {summary.summary?.active_users || 0} 位活跃用户
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 16, fontWeight: 'bold', color: '#1890ff' }}>
+                    {summary.summary?.total_records || 0}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#666' }}>总记录数</div>
+                </div>
+              </div>
+            </Card>
+          )}
+          
+          {/* 词条筛选 */}
+          {summary?.keywordSummary && (
+            <Card size="small" style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 8 }}>词条筛选</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                <Tag
+                  color={selectedKeyword === '' ? 'blue' : 'default'}
+                  style={{ 
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    border: selectedKeyword === '' ? '1px solid #1890ff' : '1px solid #d9d9d9'
+                  }}
+                  onClick={() => setSelectedKeyword('')}
+                >
+                  📊 全部词条
+                </Tag>
+                {summary.keywordSummary.map((item) => (
+                  <Tag
+                    key={item.keyword}
+                    color={selectedKeyword === item.keyword ? 'blue' : 'default'}
+                    style={{ 
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      border: selectedKeyword === item.keyword ? '1px solid #1890ff' : '1px solid #d9d9d9'
+                    }}
+                    onClick={() => setSelectedKeyword(item.keyword)}
+                  >
+                    🏷️ {item.keyword} ({item.total_count}次)
+                  </Tag>
+                ))}
+              </div>
+              {selectedKeyword && (
+                <div style={{ 
+                  marginTop: 8, 
+                  padding: '6px 12px', 
+                  backgroundColor: '#e6f7ff', 
+                  borderRadius: '6px',
+                  fontSize: 12,
+                  color: '#1890ff'
+                }}>
+                  当前筛选: <strong>{selectedKeyword}</strong>
+                  <span 
+                    style={{ 
+                      marginLeft: 8, 
+                      cursor: 'pointer', 
+                      textDecoration: 'underline' 
+                    }}
+                    onClick={() => setSelectedKeyword('')}
+                  >
+                    清除筛选
+                  </span>
+                </div>
+              )}
+            </Card>
+          )}
+          
+          {/* 词条排行榜 */}
+          {data.map((keywordData, index) => (
+            <KeywordRankingCard key={keywordData.keyword} keywordData={keywordData} />
+          ))}
+          
+          {/* 加载状态 */}
+          {keywordLoading && (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '20px',
+              color: '#1890ff'
+            }}>
+              <div>加载中...</div>
+            </div>
+          )}
+          
+          {/* 错误状态 */}
+          {keywordError[period] && (
+            <Card size="small" style={{ marginBottom: 16, border: '1px solid #ff4d4f' }}>
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '20px',
+                color: '#ff4d4f'
+              }}>
+                <div style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>
+                  ⚠️ 加载失败
+                </div>
+                <div style={{ fontSize: 14, marginBottom: 12 }}>
+                  {keywordError[period]}
+                </div>
+                <button
+                  onClick={() => fetchKeywordRankings(period)}
+                  style={{
+                    backgroundColor: '#ff4d4f',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '8px 16px',
+                    fontSize: 14,
+                    cursor: 'pointer'
+                  }}
+                >
+                  🔄 重试
+                </button>
+              </div>
+            </Card>
+          )}
+          
+          {/* 空数据状态 */}
+          {data.length === 0 && !keywordLoading && !keywordError[period] && (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '40px 20px',
+              color: '#999'
+            }}>
+              暂无词条排行榜数据
+            </div>
+          )}
+        </div>
+      )
+    } else {
+      // 桌面端视图
+      return (
+        <div>
+          {/* 摘要信息 */}
+          {summary && (
+            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+              <Col xs={24} sm={6}>
+                <ModernCard hoverable>
+                  <Statistic
+                    title="总词条数"
+                    value={summary.summary?.total_keywords || 0}
+                    prefix={<TagOutlined style={{ color: '#1890ff' }} />}
+                    valueStyle={{ color: '#1890ff', fontSize: isMobile ? 20 : 24 }}
+                  />
+                </ModernCard>
+              </Col>
+              <Col xs={24} sm={6}>
+                <ModernCard hoverable>
+                  <Statistic
+                    title="活跃用户"
+                    value={summary.summary?.active_users || 0}
+                    prefix={<TeamOutlined style={{ color: '#52c41a' }} />}
+                    suffix={`/ ${summary.summary?.total_users || 0}`}
+                    valueStyle={{ color: '#52c41a', fontSize: isMobile ? 20 : 24 }}
+                  />
+                </ModernCard>
+              </Col>
+              <Col xs={24} sm={6}>
+                <ModernCard hoverable>
+                  <Statistic
+                    title="总记录数"
+                    value={summary.summary?.total_records || 0}
+                    prefix={<FireOutlined style={{ color: '#fa8c16' }} />}
+                    valueStyle={{ color: '#fa8c16', fontSize: isMobile ? 20 : 24 }}
+                  />
+                </ModernCard>
+              </Col>
+              <Col xs={24} sm={6}>
+                <ModernCard hoverable>
+                  <Statistic
+                    title="用户活跃度"
+                    value={summary.summary?.user_activity_rate || 0}
+                    prefix={<RiseOutlined style={{ color: '#722ed1' }} />}
+                    suffix="%"
+                    valueStyle={{ color: '#722ed1', fontSize: isMobile ? 20 : 24 }}
+                  />
+                </ModernCard>
+              </Col>
+            </Row>
+          )}
+          
+          {/* 词条筛选 */}
+          {summary?.keywordSummary && (
+            <Card style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <TagOutlined style={{ color: '#1890ff' }} />
+                词条筛选
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <Tag
+                  color={selectedKeyword === '' ? 'blue' : 'default'}
+                  style={{ 
+                    cursor: 'pointer', 
+                    fontSize: 14, 
+                    padding: '6px 16px',
+                    borderRadius: '16px',
+                    border: selectedKeyword === '' ? '2px solid #1890ff' : '2px solid #d9d9d9',
+                    fontWeight: selectedKeyword === '' ? 'bold' : 'normal'
+                  }}
+                  onClick={() => setSelectedKeyword('')}
+                >
+                  📊 全部词条
+                </Tag>
+                {summary.keywordSummary.map((item) => (
+                  <Tag
+                    key={item.keyword}
+                    color={selectedKeyword === item.keyword ? 'blue' : 'default'}
+                    style={{ 
+                      cursor: 'pointer', 
+                      fontSize: 14, 
+                      padding: '6px 16px',
+                      borderRadius: '16px',
+                      border: selectedKeyword === item.keyword ? '2px solid #1890ff' : '2px solid #d9d9d9',
+                      fontWeight: selectedKeyword === item.keyword ? 'bold' : 'normal'
+                    }}
+                    onClick={() => setSelectedKeyword(item.keyword)}
+                  >
+                    🏷️ {item.keyword} ({item.total_count}次)
+                  </Tag>
+                ))}
+              </div>
+              {selectedKeyword && (
+                <div style={{ 
+                  marginTop: 12, 
+                  padding: '10px 16px', 
+                  backgroundColor: '#e6f7ff', 
+                  borderRadius: '8px',
+                  border: '1px solid #91d5ff',
+                  fontSize: 14,
+                  color: '#1890ff'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>
+                      当前筛选词条: <strong>{selectedKeyword}</strong>
+                    </span>
+                    <span 
+                      style={{ 
+                        cursor: 'pointer', 
+                        textDecoration: 'underline',
+                        fontWeight: 'bold'
+                      }}
+                      onClick={() => setSelectedKeyword('')}
+                    >
+                      ✕ 清除筛选
+                    </span>
+                  </div>
+                </div>
+              )}
+            </Card>
+          )}
+          
+          {/* 错误状态 */}
+          {keywordError[period] && (
+            <Card style={{ marginBottom: 16, border: '2px solid #ff4d4f' }}>
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '32px',
+                color: '#ff4d4f'
+              }}>
+                <div style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 12 }}>
+                  ⚠️ 数据加载失败
+                </div>
+                <div style={{ fontSize: 16, marginBottom: 20, maxWidth: '400px', margin: '0 auto 20px auto' }}>
+                  {keywordError[period]}
+                </div>
+                <button
+                  onClick={() => fetchKeywordRankings(period)}
+                  style={{
+                    backgroundColor: '#ff4d4f',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '12px 24px',
+                    fontSize: 16,
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseOver={(e) => e.target.style.backgroundColor = '#d9363e'}
+                  onMouseOut={(e) => e.target.style.backgroundColor = '#ff4d4f'}
+                >
+                  🔄 重新加载
+                </button>
+              </div>
+            </Card>
+          )}
+          
+          {/* 词条排行榜 */}
+          {!keywordError[period] && data.map((keywordData, index) => (
+            <KeywordRankingCard key={keywordData.keyword} keywordData={keywordData} />
+          ))}
+          
+          {/* 加载状态 */}
+          {keywordLoading && (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '40px',
+              color: '#1890ff'
+            }}>
+              <div>加载中...</div>
+            </div>
+          )}
+          
+          {/* 空数据状态 */}
+          {data.length === 0 && !keywordLoading && !keywordError[period] && (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '40px',
+              color: '#999'
+            }}>
+              暂无词条排行榜数据
+            </div>
+          )}
+        </div>
+      )
+    }
+  }
 
   // 渲染排行榜内容
   const renderRankingContent = (period) => {
@@ -474,19 +1328,58 @@ const Ranking = () => {
 
   const tabItems = [
     {
-      key: 'year',
-      label: '年度排名',
-      children: renderRankingContent('year')
+      key: 'overall',
+      label: '全员排名',
+      children: (
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={[
+            {
+              key: 'year',
+              label: '年度排名',
+              children: renderRankingContent('year')
+            },
+            {
+              key: 'month',
+              label: '本月排名',
+              children: renderRankingContent('month')
+            },
+            {
+              key: 'quarter',
+              label: '本季度排名',
+              children: renderRankingContent('quarter')
+            }
+          ]}
+        />
+      )
     },
     {
-      key: 'month',
-      label: '本月排名',
-      children: renderRankingContent('month')
-    },
-    {
-      key: 'quarter',
-      label: '本季度排名',
-      children: renderRankingContent('quarter')
+      key: 'keywords',
+      label: '词条排行',
+      children: (
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={[
+            {
+              key: 'year',
+              label: '年度词条',
+              children: renderKeywordRankingContent('year')
+            },
+            {
+              key: 'month',
+              label: '本月词条',
+              children: renderKeywordRankingContent('month')
+            },
+            {
+              key: 'quarter',
+              label: '本季度词条',
+              children: renderKeywordRankingContent('quarter')
+            }
+          ]}
+        />
+      )
     }
   ]
 
@@ -608,7 +1501,7 @@ const Ranking = () => {
       </Row> */}
 
       {/* 排行榜 */}
-      <ModernCard title="全员排行榜" hoverable>
+      <ModernCard title="排行榜" hoverable>
         <div 
           ref={scrollContainerRef}
           className={isMobile ? 'ranking-scroll-container' : ''}
@@ -619,8 +1512,7 @@ const Ranking = () => {
           }}
         >
           <Tabs
-            activeKey={activeTab}
-            onChange={setActiveTab}
+            defaultActiveKey="overall"
             items={tabItems}
           />
         </div>

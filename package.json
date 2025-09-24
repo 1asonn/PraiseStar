@@ -1,7 +1,7 @@
 {
   "name": "starthing-project",
   "version": "1.0.0",
-  "description": "赞赞星氛围营造工具",
+  "description": "赞赞星",
   "private": true,
   "dependencies": {
     "react": "^18.2.0",
