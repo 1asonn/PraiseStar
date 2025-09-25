@@ -282,6 +282,37 @@ export const giftsService = {
   },
 
   /**
+   * 添加礼品（支持图片上传）
+   * @param {FormData} formData - 包含图片文件的表单数据
+   * @returns {Promise} 添加结果
+   */
+  addGiftWithImage: async (formData) => {
+    try {
+      const response = await api.upload('/gifts', formData)
+      return response
+    } catch (error) {
+      console.error('添加礼品失败:', error)
+      throw error
+    }
+  },
+
+  /**
+   * 更新礼品（支持图片上传）
+   * @param {number} giftId - 礼品ID
+   * @param {FormData} formData - 包含图片文件的表单数据
+   * @returns {Promise} 更新结果
+   */
+  updateGiftWithImage: async (giftId, formData) => {
+    try {
+      const response = await api.upload(`/gifts/${giftId}`, formData, 'PUT')
+      return response
+    } catch (error) {
+      console.error('更新礼品失败:', error)
+      throw error
+    }
+  },
+
+  /**
    * 上传礼品图片
    * @param {File} file - 图片文件
    * @returns {Promise} 上传结果

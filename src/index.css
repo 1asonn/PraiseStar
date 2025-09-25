@@ -437,3 +437,18 @@ body {
 .info-color {
   color: #1890ff;
 }
+
+/* 礼品预览遮罩样式 */
+.gift-preview-mask {
+  background: rgba(0, 0, 0, 0.6) !important;
+  color: white !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  border-radius: 4px !important;
+  transition: all 0.3s ease !important;
+}
+
+.gift-preview-mask:hover {
+  background: rgba(0, 0, 0, 0.8) !important;
+  transform: scale(1.05) !important;
+}

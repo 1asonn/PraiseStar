@@ -162,7 +162,6 @@ const ProfileModal = ({ visible, onCancel }) => {
            }
            size="small" 
            style={{ marginBottom: 24 }}
-           bodyStyle={{ padding: '16px' }}
            extra={
              !editingPhone ? (
                <Button 

@@ -364,286 +364,195 @@ const Ranking = () => {
   const userMonthRank = myRanking.month
   const userQuarterRank = myRanking.quarter
 
-  // 词条排行榜卡片组件
+  // 简化的词条排行榜卡片组件
   const KeywordRankingCard = ({ keywordData }) => (
     <Card
       size="small"
       style={{ 
-        marginBottom: 20,
-        borderRadius: '16px',
+        marginBottom: 16,
+        borderRadius: '12px',
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
         border: '1px solid #f0f0f0',
-        overflow: 'hidden',
         transition: 'all 0.3s ease',
-        background: 'linear-gradient(135deg, #ffffff 0%, #fafbff 100%)'
+        background: 'linear-gradient(135deg, #ffffff 0%, #fafbff 100%)',
+        overflow: 'hidden'
       }}
-      bodyStyle={{ padding: 0 }}
     >
-      {/* 词条标题区域 */}
+      {/* 词条标题 */}
       <div style={{
-        padding: isMobile ? '16px' : '20px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+        paddingBottom: 16,
+        borderBottom: '1px solid #f0f0f0',
         background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
-        color: 'white',
-        position: 'relative'
+        margin: '-16px -16px 16px -16px',
+        padding: '16px',
+        color: 'white'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 12 : 16 }}>
-            <div style={{ 
-              width: isMobile ? 40 : 48, 
-              height: isMobile ? 40 : 48, 
-              borderRadius: '50%', 
-              backgroundColor: 'rgba(255, 255, 255, 0.2)', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              fontSize: isMobile ? 18 : 22,
-              fontWeight: 'bold',
-              flexShrink: 0,
-              border: '2px solid rgba(255, 255, 255, 0.3)'
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ 
+            width: 40, 
+            height: 40, 
+            borderRadius: '50%', 
+            backgroundColor: 'rgba(255, 255, 255, 0.2)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            fontSize: 18,
+            fontWeight: 'bold',
+            color: 'white',
+            border: '2px solid rgba(255, 255, 255, 0.3)'
+          }}>
+            {keywordData.keyword.charAt(0)}
+          </div>
+          <div>
+            <h4 style={{ 
+              margin: 0,
+              fontWeight: 'bold', 
+              fontSize: 18, 
+              color: 'white',
+              textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
             }}>
-              {keywordData.keyword.charAt(0)}
-            </div>
-            <div>
-              <h3 style={{ 
-                margin: 0,
-                fontWeight: 'bold', 
-                fontSize: isMobile ? 18 : 20, 
-                color: 'white',
-                textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
-              }}>
-                {keywordData.keyword}
-              </h3>
-              <div style={{
-                display: 'flex',
-                gap: isMobile ? 6 : 8,
-                marginTop: 6
-              }}>
-                <div style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                  color: 'white',
-                  padding: isMobile ? '2px 8px' : '4px 10px',
-                  borderRadius: '12px',
-                  fontSize: isMobile ? 11 : 12,
-                  fontWeight: '500',
-                  border: '1px solid rgba(255, 255, 255, 0.2)'
-                }}>
-                  {keywordData.total_count}次
-                </div>
-                <div style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                  color: 'white',
-                  padding: isMobile ? '2px 8px' : '4px 10px',
-                  borderRadius: '12px',
-                  fontSize: isMobile ? 11 : 12,
-                  fontWeight: '500',
-                  border: '1px solid rgba(255, 255, 255, 0.2)'
-                }}>
-                  {keywordData.unique_users}人
-                </div>
-              </div>
+              {keywordData.keyword}
+            </h4>
+            <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.8)' }}>
+              {keywordData.unique_users}人参与
             </div>
           </div>
-          
-          {/* 右侧统计信息 */}
+        </div>
+        
+        {/* 右侧统计信息 */}
+        <div style={{ textAlign: 'right' }}>
           <div style={{ 
-            textAlign: 'right',
-            minWidth: isMobile ? 90 : 110
+            fontSize: 20,
+            fontWeight: 'bold',
+            color: 'white',
+            marginBottom: 4,
+            textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
           }}>
-            <div style={{ 
-              fontSize: isMobile ? 16 : 18,
-              fontWeight: 'bold',
-              marginBottom: 4
-            }}>
-              {keywordData.total_stars} ⭐
-            </div>
-            <div style={{ 
-              fontSize: isMobile ? 11 : 12, 
-              opacity: 0.9,
-              fontWeight: '500'
-            }}>
-              平均 {(keywordData.total_stars / keywordData.total_count).toFixed(1)}⭐/次
-            </div>
+            {keywordData.total_stars} ⭐
+          </div>
+          <div style={{ 
+            fontSize: 12, 
+            color: 'rgba(255, 255, 255, 0.8)'
+          }}>
+            {keywordData.total_count} 次
           </div>
         </div>
       </div>
       
-      {/* 用户列表区域 */}
-      <div style={{
-        padding: isMobile ? '16px' : '20px',
-        paddingTop: 16
-      }}>
-        {keywordData.users.map((user, index) => (
+      {/* 简化的用户列表 - 只显示前5名 */}
+      <div>
+        {keywordData.users.slice(0, 5).map((user, index) => (
           <div
             key={user.user_id}
             style={{
               display: 'flex',
               alignItems: 'center',
-              padding: isMobile ? '12px 8px' : '16px 12px',
-              backgroundColor: user.user_id === user?.id ? '#f0f8ff' : 'transparent',
-              borderRadius: '12px',
-              marginBottom: index < keywordData.users.length - 1 ? '8px' : '0',
-              transition: 'all 0.3s ease',
-              border: user.user_id === user?.id ? '2px solid #1890ff' : '2px solid transparent',
-              position: 'relative',
-              overflow: 'hidden'
+              padding: '8px 0',
+              borderBottom: index < 4 ? '1px solid #f5f5f5' : 'none'
             }}
           >
-            {/* 背景装饰 */}
-            {user.user_id === user?.id && (
-              <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'linear-gradient(135deg, rgba(24, 144, 255, 0.05) 0%, rgba(24, 144, 255, 0.02) 100%)',
-                zIndex: 0
-              }} />
-            )}
-            {/* 左侧：排名 + 用户信息 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 12 : 16, flex: 1, minWidth: 0, position: 'relative', zIndex: 1 }}>
-              {/* 排名 */}
-              <div style={{
-                width: isMobile ? 32 : 36,
-                height: isMobile ? 32 : 36,
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                ...getRankStyle(user.ranking, isMobile),
-                fontSize: isMobile ? 12 : 14,
-                boxShadow: user.ranking <= 3 ? '0 2px 8px rgba(24, 144, 255, 0.3)' : '0 1px 4px rgba(0, 0, 0, 0.1)'
+            {/* 排名 */}
+            <div style={{
+              width: 24,
+              height: 24,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              marginRight: 12,
+              ...getRankStyle(user.ranking, isMobile),
+              fontSize: 12
+            }}>
+              {getRankDisplay(user.ranking)}
+            </div>
+            
+            {/* 用户信息 */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ 
+                fontWeight: user.user_id === user?.id ? 'bold' : 'normal',
+                color: user.user_id === user?.id ? '#1890ff' : '#262626',
+                fontSize: 14,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
               }}>
-                {getRankDisplay(user.ranking)}
-              </div>
-              
-              {/* 用户信息 */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: isMobile ? 6 : 8, 
-                  marginBottom: isMobile ? 4 : 6,
-                  flexWrap: 'wrap'
-                }}>
+                {user.user_name}
+                {user.user_id === user?.id && (
                   <span style={{
-                    fontWeight: user.user_id === user?.id ? 'bold' : '600',
-                    color: user.user_id === user?.id ? '#1890ff' : '#262626',
-                    fontSize: isMobile ? 14 : 16,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
+                    marginLeft: 8,
+                    backgroundColor: '#1890ff',
+                    color: 'white',
+                    padding: '2px 6px',
+                    borderRadius: '8px',
+                    fontSize: 10,
+                    fontWeight: '500'
                   }}>
-                    {user.user_name}
+                    我
                   </span>
-                  {user.user_id === user?.id && (
-                    <div style={{
-                      backgroundColor: '#1890ff',
-                      color: 'white',
-                      padding: isMobile ? '2px 6px' : '3px 8px',
-                      borderRadius: '10px',
-                      fontSize: isMobile ? 10 : 11,
-                      fontWeight: '500',
-                      border: '1px solid #1890ff'
-                    }}>
-                      我
-                    </div>
-                  )}
-                </div>
-                <div style={{ 
-                  display: 'flex', 
-                  gap: isMobile ? 4 : 6, 
-                  fontSize: isMobile ? 11 : 12,
-                  flexWrap: 'wrap'
-                }}>
-                  <div style={{
-                    backgroundColor: '#f0f0f0',
-                    color: '#595959',
-                    padding: isMobile ? '2px 6px' : '3px 8px',
-                    borderRadius: '8px',
-                    fontSize: isMobile ? 10 : 11,
-                    fontWeight: '500'
-                  }}>
-                    {user.user_department}
-                  </div>
-                  <div style={{
-                    backgroundColor: '#f0f0f0',
-                    color: '#595959',
-                    padding: isMobile ? '2px 6px' : '3px 8px',
-                    borderRadius: '8px',
-                    fontSize: isMobile ? 10 : 11,
-                    fontWeight: '500'
-                  }}>
-                    {user.user_position}
-                  </div>
-                </div>
+                )}
               </div>
             </div>
             
-            {/* 右侧：统计信息 */}
+            {/* 统计信息 */}
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: isMobile ? 12 : 16, 
-              flexShrink: 0,
-              position: 'relative',
-              zIndex: 1
+              gap: 12,
+              flexShrink: 0
             }}>
-              {/* 获得次数 */}
-              <div style={{ 
-                textAlign: 'center',
-                backgroundColor: user.user_id === user?.id ? 'rgba(24, 144, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                padding: isMobile ? '8px 6px' : '10px 8px',
-                borderRadius: '10px',
-                minWidth: isMobile ? 50 : 60,
-                border: user.user_id === user?.id ? '1px solid rgba(24, 144, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.1)'
-              }}>
+              <div style={{ textAlign: 'center' }}>
                 <div style={{ 
-                  fontSize: isMobile ? 16 : 18, 
+                  fontSize: 14, 
                   fontWeight: 'bold', 
-                  color: user.user_id === user?.id ? '#1890ff' : '#262626',
-                  marginBottom: 2
+                  color: user.user_id === user?.id ? '#1890ff' : '#262626'
                 }}>
                   {user.count}
                 </div>
                 <div style={{ 
-                  fontSize: isMobile ? 10 : 11, 
-                  color: user.user_id === user?.id ? '#1890ff' : '#8c8c8c',
-                  fontWeight: '500'
+                  fontSize: 10, 
+                  color: '#8c8c8c'
                 }}>
                   次
                 </div>
               </div>
               
-              {/* 总星数 */}
-              <div style={{ 
-                textAlign: 'center',
-                backgroundColor: user.user_id === user?.id ? 'rgba(24, 144, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                padding: isMobile ? '8px 6px' : '10px 8px',
-                borderRadius: '10px',
-                minWidth: isMobile ? 50 : 60,
-                border: user.user_id === user?.id ? '1px solid rgba(24, 144, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.1)'
-              }}>
+              <div style={{ textAlign: 'center' }}>
                 <div style={{ 
-                  fontSize: isMobile ? 16 : 18, 
+                  fontSize: 14, 
                   fontWeight: 'bold', 
-                  color: user.user_id === user?.id ? '#1890ff' : '#262626',
-                  marginBottom: 2
+                  color: user.user_id === user?.id ? '#1890ff' : '#262626'
                 }}>
                   {user.total_stars}
                 </div>
                 <div style={{ 
-                  fontSize: isMobile ? 10 : 11, 
-                  color: user.user_id === user?.id ? '#1890ff' : '#8c8c8c',
-                  fontWeight: '500'
+                  fontSize: 10, 
+                  color: '#8c8c8c'
                 }}>
-                  总星
+                  星
                 </div>
               </div>
             </div>
           </div>
         ))}
+        
+        {/* 显示更多提示 */}
+        {keywordData.users.length > 5 && (
+          <div style={{
+            textAlign: 'center',
+            padding: '8px 0',
+            color: '#8c8c8c',
+            fontSize: 12,
+            borderTop: '1px solid #f5f5f5',
+            marginTop: 8
+          }}>
+            还有 {keywordData.users.length - 5} 位用户...
+          </div>
+        )}
       </div>
     </Card>
   )
@@ -657,7 +566,6 @@ const Ranking = () => {
         backgroundColor: item.id === user.id ? '#e6f7ff' : '#fff',
         border: item.id === user.id ? '1px solid #1890ff' : '1px solid #f0f0f0'
       }}
-      bodyStyle={{ padding: 12 }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -1453,52 +1361,6 @@ const Ranking = () => {
           </ModernCard>
         </Col>
       </Row>
-
-      {/* 排名进度 */}
-      {/* <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col span={24}>
-          <Card title="排名进度分析" className="card-shadow">
-            <Row gutter={[16, 16]}>
-              <Col xs={24} md={12}>
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <span>年度目标进度</span>
-                    <span>{Math.round(((userYearRank?.total_stars || 0) / 1200) * 100)}%</span>
-                  </div>
-                  <Progress
-                    percent={Math.round(((userYearRank?.total_stars || 0) / 1200) * 100)}
-                    strokeColor={{
-                      '0%': '#108ee9',
-                      '100%': '#87d068',
-                    }}
-                  />
-                  <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-                    目标：1200 ⭐，当前：{userYearRank?.total_stars || 0} ⭐
-                  </div>
-                </div>
-              </Col>
-              <Col xs={24} md={12}>
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <span>月度活跃度</span>
-                    <span>85%</span>
-                  </div>
-                  <Progress
-                    percent={85}
-                    strokeColor={{
-                      '0%': '#fa541c',
-                      '100%': '#faad14',
-                    }}
-                  />
-                  <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-                    基于赠送和获赞活跃度计算
-                  </div>
-                </div>
-              </Col>
-            </Row>
-          </Card>
-        </Col>
-      </Row> */}
 
       {/* 排行榜 */}
       <ModernCard title="排行榜" hoverable>

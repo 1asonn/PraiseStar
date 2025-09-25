@@ -16,7 +16,8 @@ import {
   Divider,
   Typography,
   Tooltip,
-  Badge
+  Badge,
+  Tabs
 } from 'antd'
 import {
   TrophyOutlined,
@@ -26,11 +27,14 @@ import {
   ReloadOutlined,
   BarChartOutlined,
   TeamOutlined,
-  FireOutlined
+  FireOutlined,
+  RiseOutlined,
+  TagOutlined
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import axios from 'axios'
 import apiClient from '../../services/apiClient'
+import ModernCard from '../../components/ModernCard'
 
 const { Title, Text, Paragraph } = Typography
 const { Option } = Select
@@ -457,35 +461,87 @@ const KeywordRankings = () => {
     }
   ]
 
+  // 获取统计概览数据
+  const getOverviewStats = () => {
+    if (!summary) return null
+    
+    return {
+      totalUsers: summary.summary?.total_users || 0,
+      activeUsers: summary.summary?.active_users || 0,
+      totalKeywords: summary.summary?.total_keywords || 0,
+      totalRecords: summary.summary?.total_records || 0,
+      userActivityRate: summary.summary?.user_activity_rate || 0
+    }
+  }
+
+  const overviewStats = getOverviewStats()
+
   return (
-    <div style={{ padding: isMobile ? '16px' : '24px' }}>
-      <div style={{ marginBottom: isMobile ? '16px' : '24px' }}>
-        <Title 
-          level={isMobile ? 3 : 2} 
-          style={{ 
-            margin: 0, 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: isMobile ? 8 : 12,
-            fontSize: isMobile ? '18px' : '24px'
-          }}
-        >
-          <TrophyOutlined style={{ color: '#faad14', fontSize: isMobile ? '16px' : '20px' }} />
-          词条排行榜
-        </Title>
-        <Paragraph 
-          type="secondary"
-          style={{ 
-            fontSize: isMobile ? '12px' : '14px',
-            marginTop: isMobile ? '8px' : '12px'
-          }}
-        >
-          展示用户在不同词条下的获得情况，帮助了解团队协作和认可分布
-        </Paragraph>
+    <div>
+      {/* 统计概览 */}
+      {/* {overviewStats && (
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          <Col xs={24} sm={6}>
+            <ModernCard hoverable>
+              <Statistic
+                title="总用户数"
+                value={overviewStats.totalUsers}
+                prefix={<TeamOutlined style={{ color: '#1890ff' }} />}
+                valueStyle={{ color: '#1890ff', fontSize: isMobile ? 20 : 24 }}
+              />
+              <div style={{ marginTop: 8, fontSize: isMobile ? 11 : 12, color: '#666' }}>
+                活跃用户 {overviewStats.activeUsers} 人
       </div>
+            </ModernCard>
+          </Col>
+          
+          <Col xs={24} sm={6}>
+            <ModernCard hoverable>
+              <Statistic
+                title="词条总数"
+                value={overviewStats.totalKeywords}
+                prefix={<TagOutlined style={{ color: '#52c41a' }} />}
+                valueStyle={{ color: '#52c41a', fontSize: isMobile ? 20 : 24 }}
+              />
+              <div style={{ marginTop: 8, fontSize: isMobile ? 11 : 12, color: '#666' }}>
+                记录总数 {overviewStats.totalRecords} 条
+              </div>
+            </ModernCard>
+          </Col>
+          
+          <Col xs={24} sm={6}>
+            <ModernCard hoverable>
+              <Statistic
+                title="用户活跃度"
+                value={overviewStats.userActivityRate}
+                prefix={<RiseOutlined style={{ color: '#fa8c16' }} />}
+                suffix="%"
+                valueStyle={{ color: '#fa8c16', fontSize: isMobile ? 20 : 24 }}
+              />
+              <div style={{ marginTop: 8, fontSize: isMobile ? 11 : 12, color: '#666' }}>
+                活跃用户占比
+              </div>
+            </ModernCard>
+          </Col>
+          
+          <Col xs={24} sm={6}>
+            <ModernCard hoverable>
+              <Statistic
+                title="时间周期"
+                value={filters.period === 'month' ? '本月' : filters.period === 'quarter' ? '本季度' : '本年'}
+                prefix={<TrophyOutlined style={{ color: '#722ed1' }} />}
+                valueStyle={{ color: '#722ed1', fontSize: isMobile ? 20 : 24 }}
+              />
+              <div style={{ marginTop: 8, fontSize: isMobile ? 11 : 12, color: '#666' }}>
+                当前筛选周期
+              </div>
+            </ModernCard>
+          </Col>
+        </Row>
+      )} */}
 
       {/* 筛选和搜索 */}
-      <Card style={{ marginBottom: '24px' }}>
+      <ModernCard style={{ marginBottom: '24px' }}>
         <Row gutter={isMobile ? [0, 16] : [16, 0]} align={isMobile ? 'stretch' : 'middle'}>
           <Col xs={24} sm={8} md={6}>
             <div>
@@ -532,22 +588,33 @@ const KeywordRankings = () => {
             </Button>
           </Col>
         </Row>
-      </Card>
+      </ModernCard>
 
 
-      {/* 排行榜表格 */}
-      <Card 
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <TrophyOutlined style={{ color: '#faad14' }} />
-            用户排行榜
+      {/* 排行榜 */}
+      <ModernCard title="排行榜" hoverable>
+        <Tabs
+          defaultActiveKey="users"
+          items={[
+            {
+              key: 'users',
+              label: '用户获赠排行',
+              children: (
+                <div>
             {filters.keyword && (
-              <Tag color="blue">筛选词条: {filters.keyword}</Tag>
-            )}
+                    <div style={{ 
+                      marginBottom: 16, 
+                      padding: '8px 12px', 
+                      backgroundColor: '#e6f7ff', 
+                      borderRadius: '6px',
+                      border: '1px solid #91d5ff'
+                    }}>
+                      <Text type="secondary">
+                        当前筛选词条: <strong>{filters.keyword}</strong>
+                      </Text>
           </div>
-        }
-        style={{ marginBottom: '24px' }}
-      >
+                  )}
+                  
         {isMobile ? (
           // 移动端卡片列表
           <div>
@@ -557,7 +624,11 @@ const KeywordRankings = () => {
                 size="small" 
                 style={{ 
                   marginBottom: '8px',
-                  border: record.ranking <= 3 ? '2px solid #1890ff' : '1px solid #d9d9d9'
+                            border: record.ranking <= 3 ? '2px solid #52c41a' : '1px solid #d9d9d9',
+                            background: record.ranking <= 3 ? 'linear-gradient(135deg, #f6ffed 0%, #f0f9ff 100%)' : '#fff',
+                            borderRadius: '8px',
+                            boxShadow: record.ranking <= 3 ? '0 2px 8px rgba(82, 196, 26, 0.2)' : '0 1px 4px rgba(0, 0, 0, 0.06)',
+                            transition: 'all 0.3s ease'
                 }}
               >
                 <Row gutter={8} align="middle">
@@ -577,9 +648,9 @@ const KeywordRankings = () => {
                       )}
                     </div>
                   </Col>
-                  <Col span={8}>
+                            <Col span={10}>
                     <div>
-                      <div style={{ fontWeight: 'bold', fontSize: '14px' }}>
+                                <div style={{ fontWeight: 'bold', fontSize: '14px', color: record.ranking <= 3 ? '#52c41a' : '#262626' }}>
                         {record.user_name}
                       </div>
                       <div style={{ color: '#666', fontSize: '11px' }}>
@@ -587,31 +658,24 @@ const KeywordRankings = () => {
                       </div>
                     </div>
                   </Col>
-                  <Col span={4}>
+                            <Col span={6}>
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '12px', color: '#666' }}>星数</div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-                        <span style={{ fontWeight: 'bold', color: '#1890ff', fontSize: '12px' }}>{record.total_stars}</span>
-                        <StarOutlined style={{ color: '#1890ff', fontSize: '12px' }} />
+                                  <span style={{ fontWeight: 'bold', color: '#52c41a', fontSize: '14px' }}>{record.total_stars}</span>
+                                  <StarOutlined style={{ color: '#52c41a', fontSize: '14px' }} />
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#666' }}>
+                                  {record.total_count} 次
                       </div>
                     </div>
                   </Col>
-                  <Col span={4}>
+                            <Col span={5}>
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '12px', color: '#666' }}>次数</div>
-                      <Tag color="blue" style={{ fontSize: '11px', margin: 0 }}>{record.total_count}</Tag>
+                                <div style={{ fontSize: '12px', color: '#666' }}>平均</div>
+                                <div style={{ fontWeight: 'bold', color: '#52c41a', fontSize: '12px' }}>
+                                  {(record.total_stars / record.total_count).toFixed(1)}⭐/次
+                                </div>
                     </div>
-                  </Col>
-                  <Col span={5}>
-                    <Button 
-                      type="link" 
-                      size="small"
-                      onClick={() => {
-                        message.info(`${record.user_name} 的详细词条分布`)
-                      }}
-                    >
-                      详情
-                    </Button>
                   </Col>
                 </Row>
               </Card>
@@ -640,7 +704,107 @@ const KeywordRankings = () => {
         ) : (
           // 桌面端表格
           <Table
-            columns={desktopColumns}
+                      columns={[
+                        {
+                          title: '排名',
+                          dataIndex: 'ranking',
+                          key: 'ranking',
+                          width: 80,
+                          align: 'center',
+                          render: (ranking) => {
+                            if (ranking <= 3) {
+                              const colors = ['#ffd700', '#c0c0c0', '#cd7f32']
+                              return (
+                                <Badge 
+                                  count={ranking} 
+                                  style={{ 
+                                    backgroundColor: colors[ranking - 1],
+                                    color: '#fff'
+                                  }}
+                                />
+                              )
+                            }
+                            return <span style={{ color: '#666' }}>{ranking}</span>
+                          }
+                        },
+                        {
+                          title: '用户信息',
+                          key: 'user',
+                          render: (record) => (
+                            <div>
+                              <div style={{ fontWeight: 'bold', fontSize: '16px', color: record.ranking <= 3 ? '#52c41a' : '#262626' }}>
+                                {record.user_name}
+                              </div>
+                              <div style={{ color: '#666', fontSize: '12px' }}>
+                                {record.user_department} · {record.user_position}
+                              </div>
+                            </div>
+                          )
+                        },
+                        {
+                          title: '总获赠星数',
+                          dataIndex: 'total_stars',
+                          key: 'total_stars',
+                          width: 120,
+                          align: 'center',
+                          render: (stars) => (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                              <span style={{ fontWeight: 'bold', color: '#52c41a' }}>{stars}</span>
+                              <StarOutlined style={{ color: '#52c41a' }} />
+                            </div>
+                          )
+                        },
+                        {
+                          title: '获赠次数',
+                          dataIndex: 'total_count',
+                          key: 'total_count',
+                          width: 100,
+                          align: 'center',
+                          render: (count) => (
+                            <Tag color="green">{count}</Tag>
+                          )
+                        },
+                        {
+                          title: '平均星数/次',
+                          key: 'avg_stars',
+                          width: 120,
+                          align: 'center',
+                          render: (record) => (
+                            <span style={{ color: '#52c41a', fontWeight: 'bold' }}>
+                              {(record.total_stars / record.total_count).toFixed(1)}
+                            </span>
+                          )
+                        },
+                        {
+                          title: '词条分布',
+                          key: 'keywords',
+                          render: (record) => {
+                            const keywordEntries = Object.entries(record.keywords || {})
+                              .sort((a, b) => b[1].count - a[1].count)
+                              .slice(0, 3)
+
+                            return (
+                              <div>
+                                {keywordEntries.map(([keyword, stats]) => (
+                                  <div key={keyword} style={{ marginBottom: 4 }}>
+                                    <Tag color="blue" style={{ marginBottom: 2 }}>
+                                      {keyword} ({stats.count}次)
+                                    </Tag>
+                                    <div style={{ fontSize: '12px', color: '#666' }}>
+                                      {stats.total_stars}⭐
+                                    </div>
+                                  </div>
+                                ))}
+                                {Object.keys(record.keywords || {}).length > 3 && (
+                                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                                    +{Object.keys(record.keywords || {}).length - 3} 个词条
+                                  </Text>
+                                )}
+                              </div>
+                            )
+                          }
+                        }
+                      ]}
             dataSource={rankings}
             rowKey="user_id"
             loading={loading}
@@ -658,20 +822,18 @@ const KeywordRankings = () => {
             size="middle"
           />
         )}
-      </Card>
-
-      {/* 词条统计摘要 */}
-      {summary && summary.keywordSummary && (
-        <Card 
-          title={
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <BarChartOutlined style={{ color: '#722ed1' }} />
-              词条统计摘要
             </div>
-          }
-        >
+              )
+            },
+            {
+              key: 'keywords',
+              label: '词条统计',
+              children: (
+                <div>
+                  {summary && summary.keywordSummary && (
+                    <div>
           {isMobile ? (
-            // 移动端卡片列表 - 简化字段
+                        // 移动端卡片列表
             <div>
               {summary.keywordSummary.map((item, index) => (
                 <Card 
@@ -679,7 +841,10 @@ const KeywordRankings = () => {
                   size="small" 
                   style={{ 
                     marginBottom: '12px',
-                    border: index === 0 ? '2px solid #1890ff' : '1px solid #d9d9d9'
+                                border: index === 0 ? '2px solid #1890ff' : '1px solid #d9d9d9',
+                                borderRadius: '8px',
+                                boxShadow: index === 0 ? '0 2px 8px rgba(24, 144, 255, 0.2)' : '0 1px 4px rgba(0, 0, 0, 0.06)',
+                                transition: 'all 0.3s ease'
                   }}
                 >
                   <Row gutter={12} align="middle">
@@ -719,8 +884,15 @@ const KeywordRankings = () => {
               size="small"
             />
           )}
-        </Card>
-      )}
+                    </div>
+                  )}
+                </div>
+              )
+            }
+          ]}
+        />
+      </ModernCard>
+
 
       {/* 热门词条 */}
       {summary && summary.topKeywords && summary.topKeywords.length > 0 && (

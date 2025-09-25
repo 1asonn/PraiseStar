@@ -1,6 +1,7 @@
 import { api } from './apiClient'
 import { API_CONFIG } from './config'
 import axios from 'axios'
+import { passwordUtils } from '../utils/passwordUtils'
 
 // 用户管理相关API服务
 export const userService = {
@@ -67,7 +68,13 @@ export const userService = {
    */
   addUser: async (userData) => {
     try {
-      const response = await api.post('/users', userData)
+      // 对密码进行MD5加密
+      const processedUserData = { ...userData }
+      if (processedUserData.password) {
+        processedUserData.password = passwordUtils.encryptPassword(processedUserData.password)
+      }
+      
+      const response = await api.post('/users', processedUserData)
       return response
     } catch (error) {
       console.error('添加用户失败:', error)
@@ -83,7 +90,13 @@ export const userService = {
    */
   updateUser: async (userId, userData) => {
     try {
-      const response = await api.put(`/users/${userId}`, userData)
+      // 对密码进行MD5加密（如果包含密码字段）
+      const processedUserData = { ...userData }
+      if (processedUserData.password) {
+        processedUserData.password = passwordUtils.encryptPassword(processedUserData.password)
+      }
+      
+      const response = await api.put(`/users/${userId}`, processedUserData)
       return response
     } catch (error) {
       console.error('更新用户失败:', error)
@@ -390,7 +403,11 @@ export const userService = {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('updateExisting', options.updateExisting || false)
-      formData.append('defaultPassword', options.defaultPassword || '123456')
+      
+      // 对默认密码进行MD5加密
+      const defaultPassword = options.defaultPassword || '123456'
+      const encryptedDefaultPassword = passwordUtils.encryptPassword(defaultPassword)
+      formData.append('defaultPassword', encryptedDefaultPassword)
 
       // 调试信息
       console.log('Import FormData contents:')
@@ -398,7 +415,7 @@ export const userService = {
         console.log(key, value)
       }
 
-      // 使用原生axios实例，避免apiClient的默认配置干扰
+      // 使用原生axios实例，与validateImportFile保持一致
       const token = localStorage.getItem('token')
       const response = await axios.post(`${API_CONFIG.BASE_URL}/user-data/import`, formData, {
         headers: {
@@ -462,7 +479,13 @@ export const userService = {
    */
   changePassword: async (passwordData) => {
     try {
-      const response = await api.post('/users/change-password', passwordData)
+      // 对密码进行MD5加密
+      const processedPasswordData = {
+        oldPassword: passwordUtils.encryptPassword(passwordData.oldPassword),
+        newPassword: passwordUtils.encryptPassword(passwordData.newPassword)
+      }
+      
+      const response = await api.post('/users/change-password', processedPasswordData)
       return response
     } catch (error) {
       console.error('修改密码失败:', error)
@@ -480,7 +503,16 @@ export const userService = {
    */
   updateProfile: async (profileData) => {
     try {
-      const response = await api.put('/users/profile', profileData)
+      // 对密码进行MD5加密（如果包含密码字段）
+      const processedProfileData = { ...profileData }
+      if (processedProfileData.password) {
+        processedProfileData.password = passwordUtils.encryptPassword(processedProfileData.password)
+      }
+      if (processedProfileData.currentPassword) {
+        processedProfileData.currentPassword = passwordUtils.encryptPassword(processedProfileData.currentPassword)
+      }
+      
+      const response = await api.put('/users/profile', processedProfileData)
       return response
     } catch (error) {
       console.error('更新个人信息失败:', error)

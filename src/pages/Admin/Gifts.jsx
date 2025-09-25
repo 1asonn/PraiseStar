@@ -93,6 +93,7 @@ const AdminGifts = () => {
   const [processingForm] = Form.useForm()
   const [form] = Form.useForm()
   const [imageUrl, setImageUrl] = useState('')
+  const [imageFile, setImageFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const [statistics, setStatistics] = useState({
@@ -223,9 +224,11 @@ const AdminGifts = () => {
         sortOrder: gift.sort_order
       })
       setImageUrl(gift.image)
+      setImageFile(null) // 编辑时清空文件选择
     } else {
       form.resetFields()
       setImageUrl('')
+      setImageFile(null)
     }
   }
 
@@ -266,30 +269,45 @@ const AdminGifts = () => {
   // 保存礼品
   const handleSave = async (values) => {
     try {
-      const giftData = {
-        name: values.name,
-        description: values.description,
-        stars_cost: values.starsCost,
-        stock: values.stock,
-        sort_order: values.sortOrder || 0
-        // 暂时不传递image字段
+      // 创建FormData对象用于文件上传
+      const formData = new FormData()
+      formData.append('name', values.name)
+      formData.append('description', values.description || '')
+      formData.append('stars_cost', values.starsCost)
+      formData.append('stock', values.stock)
+      formData.append('sort_order', values.sortOrder || 0)
+
+      // 如果有图片文件，添加到FormData
+      if (imageFile) {
+        console.log('添加到FormData的文件信息:', {
+          fileType: typeof imageFile,
+          isFile: imageFile instanceof File,
+          fileName: imageFile.name,
+          fileSize: imageFile.size,
+          fileType: imageFile.type
+        })
+        formData.append('file', imageFile)
       }
 
       let response
       if (editingGift) {
-        // 编辑
-        response = await giftsService.updateGift(editingGift.id, giftData)
+        // 编辑 - 使用FormData
+        response = await giftsService.updateGiftWithImage(editingGift.id, formData)
       } else {
-        // 新增
-        response = await giftsService.addGift(giftData)
+        // 新增 - 使用FormData
+        response = await giftsService.addGiftWithImage(formData)
       }
 
       if (response.success) {
         message.success(editingGift ? '编辑成功' : '添加成功')
+        if (response.data?.imageUrl) {
+          message.success(`图片已上传${response.data.storage === 'oss' ? '到OSS' : '到本地存储'}`)
+        }
         setModalVisible(false)
         form.resetFields()
         setEditingGift(null)
         setImageUrl('')
+        setImageFile(null)
         fetchGifts() // 重新获取列表
       } else {
         message.error(response.message || '操作失败')
@@ -300,31 +318,53 @@ const AdminGifts = () => {
     }
   }
 
-  // 图片上传
-  const handleImageUpload = async (info) => {
-    if (info.file.status === 'uploading') {
-      setUploading(true)
-      return
-    }
+  // 图片上传处理
+  const handleImageUpload = (info) => {
+    const { file } = info
     
-    if (info.file.status === 'done') {
-      setUploading(false)
-      try {
-        const response = await giftsService.uploadGiftImage(info.file.originFileObj)
-        if (response.success) {
-          setImageUrl(response.data.url)
-          message.success('图片上传成功')
-        } else {
-          message.error(response.message || '图片上传失败')
-        }
-      } catch (error) {
-        console.error('图片上传失败:', error)
-        message.error('图片上传失败')
+    // 文件选择时立即处理
+    if (file) {
+      // 验证文件类型
+      const isImage = file.type.startsWith('image/')
+      if (!isImage) {
+        message.error('只能上传图片文件!')
+        return false
       }
-    } else if (info.file.status === 'error') {
-      setUploading(false)
-      message.error('图片上传失败')
+
+      // 验证文件大小 (5MB)
+      const isLt5M = file.size / 1024 / 1024 < 5
+      if (!isLt5M) {
+        message.error('图片大小不能超过 5MB!')
+        return false
+      }
+
+      // 获取原始文件对象（真正的二进制文件）
+      const originalFile = file.originFileObj || file
+      
+      // 调试信息
+      console.log('文件对象信息:', {
+        fileType: typeof originalFile,
+        isFile: originalFile instanceof File,
+        fileName: originalFile.name,
+        fileSize: originalFile.size,
+        fileType: originalFile.type,
+        hasOriginFileObj: !!file.originFileObj
+      })
+      
+      // 保存原始文件对象和预览URL
+      setImageFile(originalFile)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setImageUrl(e.target.result)
+      }
+      reader.readAsDataURL(originalFile)
     }
+  }
+
+  // 移除图片
+  const handleRemoveImage = () => {
+    setImageUrl('')
+    setImageFile(null)
   }
 
   // 导出兑换明细
@@ -414,7 +454,6 @@ const AdminGifts = () => {
     <Card
       size="small"
       style={{ marginBottom: 12 }}
-      bodyStyle={{ padding: 12 }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <Image
@@ -423,7 +462,6 @@ const AdminGifts = () => {
           src={gift.image}
           alt={gift.name}
           style={{ objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
-          fallback="/images/gift-placeholder.jpg"
         />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ 
@@ -634,7 +672,6 @@ const AdminGifts = () => {
               src={record.gift.image}
               alt={record.gift.name}
               style={{ objectFit: 'cover', borderRadius: 4 }}
-              fallback="/images/gift-placeholder.jpg"
             />
           )}
           <span>{record.gift?.name}</span>
@@ -1130,28 +1167,74 @@ const AdminGifts = () => {
                 label="礼品图片"
                 name="image"
               >
-                <Upload
-                  listType="picture-card"
-                  className="gift-uploader"
-                  showUploadList={false}
-                  onChange={handleImageUpload}
-                  beforeUpload={() => false} // 阻止自动上传
-                >
-                  {imageUrl ? (
-                    <Image
-                      src={imageUrl}
-                      alt="礼品图片"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <div>
-                      {uploading ? <Spin /> : <PlusOutlined />}
-                      <div style={{ marginTop: 8 }}>
-                        {uploading ? '上传中...' : '上传图片'}
+                <div>
+                  <Upload
+                    listType="picture-card"
+                    className="gift-uploader"
+                    showUploadList={false}
+                    onChange={handleImageUpload}
+                    beforeUpload={() => false} // 阻止自动上传
+                    accept="image/*"
+                  >
+                    {imageUrl ? (
+                      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                        <Image
+                          src={imageUrl}
+                          alt="礼品图片"
+                          style={{ 
+                            width: '100%', 
+                            height: '100%', 
+                            objectFit: 'cover',
+                            borderRadius: '6px'
+                          }}
+                        />
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            right: 0,
+                            background: 'rgba(0, 0, 0, 0.5)',
+                            color: 'white',
+                            borderRadius: '0 6px 0 6px',
+                            padding: '4px 8px',
+                            fontSize: '12px',
+                            cursor: 'pointer'
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleRemoveImage()
+                          }}
+                        >
+                          移除
+                        </div>
                       </div>
+                    ) : (
+                      <div style={{ textAlign: 'center' }}>
+                        <PlusOutlined style={{ fontSize: '24px', color: '#999' }} />
+                        <div style={{ marginTop: 8, color: '#666' }}>
+                          上传图片
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#999', marginTop: 4 }}>
+                          支持 JPG、PNG 格式，大小不超过 5MB
+                        </div>
+                      </div>
+                    )}
+                  </Upload>
+                  
+                  {imageFile && (
+                    <div style={{ 
+                      marginTop: 8, 
+                      padding: '8px 12px', 
+                      background: '#f6ffed', 
+                      border: '1px solid #b7eb8f',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      color: '#52c41a'
+                    }}>
+                      ✓ 已选择文件: {imageFile.name} ({(imageFile.size / 1024 / 1024).toFixed(2)} MB)
                     </div>
                   )}
-                </Upload>
+                </div>
               </Form.Item>
             </Col>
           </Row>

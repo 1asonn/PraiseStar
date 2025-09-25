@@ -49,6 +49,21 @@ const ImportCenter = () => {
     defaultPassword: '123456'
   })
 
+  // 重置导入状态
+  const resetImportState = () => {
+    setUploading(false)
+    setValidating(false)
+    setCurrentStep(0)
+    setFileList([])
+    setValidationResult(null)
+    setImportResult(null)
+    setImportModalVisible(false)
+    setImportSettings({
+      updateExisting: false,
+      defaultPassword: '123456'
+    })
+  }
+
   // 下载导入模板
   const downloadTemplate = async () => {
     try {
@@ -140,6 +155,11 @@ const ImportCenter = () => {
         setCurrentStep(4)
         message.success('数据导入完成')
         setImportModalVisible(false)
+        
+        // 延迟重置状态，让用户看到导入结果
+        setTimeout(() => {
+          resetImportState()
+        }, 3000) // 3秒后自动重置
       } else {
         message.error(response.message || '数据导入失败')
       }
@@ -155,12 +175,21 @@ const ImportCenter = () => {
   const uploadProps = {
     name: 'file',
     multiple: false,
-    accept: '.csv',
+    accept: '.csv,.xlsx,.xls',
     fileList,
     beforeUpload: (file) => {
-      const isCSV = file.type === 'text/csv' || file.name.endsWith('.csv')
-      if (!isCSV) {
-        message.error('只能上传 CSV 文件!')
+      const allowedTypes = [
+        'text/csv',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      ]
+      const allowedExtensions = ['.csv', '.xlsx', '.xls']
+      
+      const isValidType = allowedTypes.includes(file.type) || 
+                         allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
+      
+      if (!isValidType) {
+        message.error('只能上传 CSV、XLSX、XLS 文件!')
         return false
       }
       const isLt5M = file.size / 1024 / 1024 < 5
@@ -207,12 +236,17 @@ const ImportCenter = () => {
       dataIndex: 'levelKey',
       key: 'levelKey',
       render: (levelKey) => {
+        const levelMap = {
+          'employee': '员工',
+          'manager': '部门负责人',
+          'executive': '高管'
+        }
         const colorMap = {
           'employee': 'blue',
           'manager': 'green',
           'executive': 'red'
         }
-        return <Tag color={colorMap[levelKey] || 'default'}>{levelKey}</Tag>
+        return <Tag color={colorMap[levelKey] || 'default'}>{levelMap[levelKey] || levelKey}</Tag>
       }
     },
     {
@@ -269,9 +303,9 @@ const ImportCenter = () => {
               <p className="ant-upload-drag-icon">
                 <UploadOutlined />
               </p>
-              <p className="ant-upload-text">点击或拖拽 CSV 文件到此区域上传</p>
+              <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
               <p className="ant-upload-hint">
-                支持单个文件上传，文件大小不超过 5MB
+                支持 CSV、XLSX、XLS 文件，单个文件大小不超过 5MB
               </p>
             </Dragger>
             
@@ -404,6 +438,26 @@ const ImportCenter = () => {
                     />
                   </Col>
                 )}
+                
+                {/* 重置按钮 */}
+                <Col span={24}>
+                  <div style={{ textAlign: 'center', marginTop: 16 }}>
+                    <Button 
+                      type="primary" 
+                      onClick={resetImportState}
+                      style={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '8px 24px',
+                        height: 'auto',
+                        fontWeight: '500'
+                      }}
+                    >
+                      重新开始导入
+                    </Button>
+                  </div>
+                </Col>
               </Row>
             </Card>
           </Col>

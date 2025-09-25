@@ -224,10 +224,13 @@ const Redeem = () => {
                         style={{ 
                           width: '100%', 
                           height: '100%', 
-                          objectFit: 'cover' 
+                          objectFit: 'cover',
+                          cursor: 'pointer'
                         }}
-                        fallback="/images/gift-placeholder.jpg"
-                        preview={false}
+                        preview={{
+                          mask: '点击预览',
+                          maskClassName: 'gift-preview-mask'
+                        }}
                       />
                       {gift.stock <= 5 && (
                         <div style={{
@@ -316,8 +319,16 @@ const Redeem = () => {
                 alt={selectedGift.name}
                 width={120}
                 height={120}
-                style={{ objectFit: 'cover', borderRadius: 8 }}
+                style={{ 
+                  objectFit: 'cover', 
+                  borderRadius: 8,
+                  cursor: 'pointer'
+                }}
                 fallback="/images/gift-placeholder.jpg"
+                preview={{
+                  mask: '点击预览',
+                  maskClassName: 'gift-preview-mask'
+                }}
               />
               <h3 style={{ margin: '12px 0 4px' }}>{selectedGift.name}</h3>
               <Tag color="orange" style={{ fontSize: 14 }}>

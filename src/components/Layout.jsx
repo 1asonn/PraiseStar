@@ -38,7 +38,7 @@ const Layout = ({ userType }) => {
   const [profileModalVisible, setProfileModalVisible] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, logout } = useAuth()
+  const { user, logout, isSuperAdmin, superAdmin, logoutSuperAdmin } = useAuth()
 
   // 用户菜单项
   const userMenuItems = [
@@ -136,11 +136,22 @@ const Layout = ({ userType }) => {
   }
 
   const handleLogout = () => {
-    logout()
-    navigate('/login')
+    if (isSuperAdmin) {
+      logoutSuperAdmin()
+    } else {
+      logout()
+      navigate('/login')
+    }
   }
 
-  const userDropdownItems = [
+  // 根据用户类型生成不同的下拉菜单
+  const userDropdownItems = isSuperAdmin ? [
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: '退出登录'
+    }
+  ] : [
     {
       key: 'profile',
       icon: <UserOutlined />,
@@ -329,7 +340,9 @@ const Layout = ({ userType }) => {
           }}>
             <h2 style={{ 
               margin: 0, 
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: isSuperAdmin 
+                ? 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)'
+                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -337,9 +350,22 @@ const Layout = ({ userType }) => {
               fontWeight: 'bold',
               lineHeight: 1.2
             }}>
-              {currentView === 'admin' ? 'Praise Star Admin' : 'Praise Star'}
+              {isSuperAdmin ? '🔧 超级管理员控制台' : (currentView === 'admin' ? 'Praise Star Admin' : 'Praise Star')}
             </h2>
-            {currentView !== 'admin' && (
+            {isSuperAdmin ? (
+              <div style={{
+                fontSize: isMobile ? 10 : 12,
+                color: '#ff6b6b',
+                marginTop: 2,
+                lineHeight: 1.4,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                fontWeight: 'bold'
+              }}>
+                ⚠️ 超级管理员账号，请谨慎操作
+              </div>
+            ) : currentView !== 'admin' && (
               <div style={{
                 fontSize: isMobile ? 10 : 12,
                 color: '#666',
@@ -355,7 +381,7 @@ const Layout = ({ userType }) => {
           </div>
 
           {/* 管理员视图切换按钮 */}
-          {user?.isAdmin && (
+          {user?.isAdmin && !isSuperAdmin && (
             <Button
               type="primary"
               icon={<SwapOutlined />}
@@ -412,8 +438,12 @@ const Layout = ({ userType }) => {
                   icon={<UserOutlined />} 
                   size={isMobile ? 'small' : 'default'}
                   style={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3)'
+                    background: isSuperAdmin 
+                      ? 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)'
+                      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    boxShadow: isSuperAdmin 
+                      ? '0 4px 16px rgba(255, 107, 107, 0.3)'
+                      : '0 4px 16px rgba(102, 126, 234, 0.3)'
                   }}
                 />
                 {!isMobile && (
@@ -423,9 +453,9 @@ const Layout = ({ userType }) => {
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
                     fontWeight: '500',
-                    color: '#333'
+                    color: isSuperAdmin ? '#ff6b6b' : '#333'
                   }}>
-                    {user?.name}
+                    {isSuperAdmin ? (superAdmin?.username || '超级管理员') : user?.name}
                   </span>
                 )}
               </Space>

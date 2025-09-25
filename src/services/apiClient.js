@@ -22,6 +22,11 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
     
+    // 如果是FormData，删除Content-Type让浏览器自动设置
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']
+    }
+    
     // 调试信息
     console.log('Request config:', config)
     console.log('Request headers:', config.headers)
@@ -131,13 +136,22 @@ export const api = {
   },
 
   // 文件上传
-  upload: (url, formData, onUploadProgress = null) => {
-    return apiClient.post(url, formData, {
+  upload: (url, formData, method = 'POST', onUploadProgress = null) => {
+    const config = {
       headers: {
         // 不设置Content-Type，让浏览器自动设置multipart/form-data with boundary
       },
       onUploadProgress,
-    })
+    }
+    
+    switch (method.toUpperCase()) {
+      case 'PUT':
+        return apiClient.put(url, formData, config)
+      case 'PATCH':
+        return apiClient.patch(url, formData, config)
+      default:
+        return apiClient.post(url, formData, config)
+    }
   },
 }
 

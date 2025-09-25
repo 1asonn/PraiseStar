@@ -35,10 +35,6 @@ const ModernCard = ({
     <Card
       className={`modern-card ${className}`}
       style={cardStyle}
-      bodyStyle={{
-        padding: '24px',
-        ...props.bodyStyle
-      }}
       {...props}
     >
       {children}

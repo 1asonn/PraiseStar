@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { authService } from '../services/authService'
+import { superAdminService } from '../services/superAdminService'
 import { message } from 'antd'
 
 // 创建鉴权上下文
@@ -19,6 +20,8 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [superAdmin, setSuperAdmin] = useState(null)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
 
   useEffect(() => {
     // 初始化认证状态
@@ -28,7 +31,7 @@ export const AuthProvider = ({ children }) => {
   // 初始化认证状态
   const initializeAuth = async () => {
     try {
-      // 检查本地存储中的token和用户信息
+      // 检查普通用户认证状态
       const token = authService.getCurrentToken()
       const savedUser = authService.getCurrentUser()
 
@@ -52,6 +55,45 @@ export const AuthProvider = ({ children }) => {
             setIsAuthenticated(false)
           }
           // 网络错误等其他情况保持当前状态
+        }
+      }
+
+      // 检查超级管理员认证状态
+      const superAdminToken = superAdminService.getCurrentToken()
+      const savedSuperAdmin = superAdminService.getCurrentSuperAdmin()
+
+      if (superAdminToken && savedSuperAdmin) {
+        // 检查是否为超级管理员（通过用户信息中的标识）
+        if (savedSuperAdmin.isSuperAdmin === true) {
+          setSuperAdmin(savedSuperAdmin)
+          setIsSuperAdmin(true)
+          
+          // 异步验证超级管理员token有效性
+          try {
+            await superAdminService.verifyToken()
+          } catch (error) {
+            console.warn('超级管理员Token验证失败:', error.message)
+            if (error.status === 401 || error.status === 403) {
+              console.warn('超级管理员认证失败，清除本地存储')
+              superAdminService.logout()
+              setSuperAdmin(null)
+              setIsSuperAdmin(false)
+            }
+          }
+        }
+      } else {
+        // 如果没有找到超级管理员信息，检查普通用户信息中是否有超级管理员标识
+        const userStr = localStorage.getItem('user')
+        if (userStr) {
+          try {
+            const user = JSON.parse(userStr)
+            if (user.isSuperAdmin === true) {
+              setSuperAdmin(user)
+              setIsSuperAdmin(true)
+            }
+          } catch (error) {
+            console.error('解析用户信息失败:', error)
+          }
         }
       }
     } catch (error) {
@@ -105,6 +147,66 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // 超级管理员登录
+  const loginSuperAdmin = async (username, password) => {
+    try {
+      setLoading(true)
+      const response = await superAdminService.login(username, password)
+      
+      if (response.success) {
+        // 为超级管理员信息添加标识
+        const superAdminWithFlag = {
+          ...response.data.superAdmin,
+          isSuperAdmin: true,
+          isAdmin: true // 超级管理员也拥有管理员权限
+        }
+        
+        // 将带有标识的超级管理员信息保存到localStorage
+        localStorage.setItem('user', JSON.stringify(superAdminWithFlag))
+        
+        setSuperAdmin(superAdminWithFlag)
+        setIsSuperAdmin(true)
+        message.success('超级管理员登录成功')
+        return { success: true, superAdmin: superAdminWithFlag }
+      } else {
+        message.error(response.message || '超级管理员登录失败')
+        return { success: false, message: response.message || '超级管理员登录失败' }
+      }
+    } catch (error) {
+      console.error('超级管理员登录失败:', error)
+      const errorMessage = error.message || '超级管理员登录失败，请稍后重试'
+      message.error(errorMessage)
+      return { success: false, message: errorMessage }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 超级管理员登出
+  const logoutSuperAdmin = async () => {
+    try {
+      // 清除超级管理员状态
+      setSuperAdmin(null)
+      setIsSuperAdmin(false)
+      
+      // 清除本地存储
+      await superAdminService.logout()
+      
+      message.success('超级管理员已安全退出')
+      
+      // 跳转到登录页面
+      window.location.href = '/login'
+    } catch (error) {
+      console.error('超级管理员登出失败:', error)
+      // 即使后端登出失败，也要清除前端状态
+      setSuperAdmin(null)
+      setIsSuperAdmin(false)
+      
+      // 强制跳转到登录页面
+      window.location.href = '/login'
+    }
+  }
+
   // 刷新用户信息
   const refreshUser = async () => {
     try {
@@ -131,7 +233,7 @@ export const AuthProvider = ({ children }) => {
 
   // 检查是否为管理员
   const isAdmin = () => {
-    return user?.isAdmin === true
+    return user?.isAdmin === true || isSuperAdmin
   }
 
   const value = {
@@ -142,7 +244,11 @@ export const AuthProvider = ({ children }) => {
     logout,
     refreshUser,
     updateUser,
-    isAdmin
+    isAdmin,
+    superAdmin,
+    isSuperAdmin,
+    loginSuperAdmin,
+    logoutSuperAdmin
   }
 
   return (

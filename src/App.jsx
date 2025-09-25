@@ -16,6 +16,7 @@ import ImportCenter from './pages/Admin/ImportCenter'
 import ExportCenter from './pages/Admin/ExportCenter'
 import KeywordRankings from './pages/Admin/KeywordRankings'
 import Login from './pages/Login'
+import SuperAdminDashboard from './pages/SuperAdmin/Dashboard'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 
 // 路由守卫组件
@@ -38,20 +39,20 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   return children
 }
 
-// 管理员路由守卫组件 - 允许管理员访问所有路由
+// 管理员路由守卫组件 - 允许管理员和超级管理员访问所有路由
 const AdminRoute = ({ children }) => {
-  const { user, isAuthenticated, loading } = useAuth()
+  const { user, isAuthenticated, loading, isSuperAdmin } = useAuth()
   
   // 如果正在加载认证状态，显示加载中
   if (loading) {
     return <AuthLoading />
   }
   
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !isSuperAdmin) {
     return <Navigate to="/login" replace />
   }
   
-  if (!user?.isAdmin) {
+  if (!user?.isAdmin && !isSuperAdmin) {
     return <Navigate to="/user" replace />
   }
   
@@ -68,6 +69,22 @@ const UserRoute = ({ children }) => {
   }
   
   if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+  
+  return children
+}
+
+// 超级管理员路由守卫组件
+const SuperAdminRoute = ({ children }) => {
+  const { isSuperAdmin, loading } = useAuth()
+  
+  // 如果正在加载认证状态，显示加载中
+  if (loading) {
+    return <AuthLoading />
+  }
+  
+  if (!isSuperAdmin) {
     return <Navigate to="/login" replace />
   }
   
@@ -110,6 +127,13 @@ function App() {
             <Route path="export" element={<ExportCenter />} />
             <Route path="keyword-rankings" element={<KeywordRankings />} />
           </Route>
+          
+          {/* 超级管理员路由 */}
+          <Route path="/super-admin" element={
+            <SuperAdminRoute>
+              <SuperAdminDashboard />
+            </SuperAdminRoute>
+          } />
         </Routes>
       </Router>
     </AuthProvider>
