@@ -65,42 +65,10 @@ const ImportCenter = () => {
   }
 
   // 下载导入模板
-  const downloadTemplate = async () => {
+  const downloadTemplate = async (format = 'xlsx') => {
     try {
-      const blob = await userService.downloadImportTemplate()
-      
-      console.log('模板下载响应:', blob)
-      console.log('模板响应数据:', blob)
-      
-      // 检查响应数据 - 修复Blob类型检查
-      if (blob === undefined || blob === null) {
-        throw new Error('服务器返回空数据')
-      }
-      
-      // 对于Blob类型，检查size属性
-      if (blob instanceof Blob && blob.size === 0) {
-        throw new Error('服务器返回空文件')
-      }
-      
-      const csvBlob = new Blob([blob], { type: 'text/csv;charset=utf-8' })
-      
-      console.log('创建的模板blob:', csvBlob)
-      console.log('模板blob大小:', csvBlob.size)
-      
-      if (csvBlob.size === 0) {
-        throw new Error('生成的模板文件为空')
-      }
-      
-      const url = window.URL.createObjectURL(csvBlob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `user_import_template_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-      
-      message.success('模板下载成功')
+      await userService.downloadImportTemplate(format)
+      message.success(`${format.toUpperCase()} 模板下载成功`)
     } catch (error) {
       console.error('下载模板失败:', error)
       message.error(`下载模板失败: ${error.message}`)
@@ -309,22 +277,53 @@ const ImportCenter = () => {
               </p>
             </Dragger>
             
-            <Space>
+            <Space wrap>
               <Button 
                 icon={<DownloadOutlined />} 
-                onClick={downloadTemplate}
+                onClick={() => downloadTemplate('xlsx')}
+                style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  color: 'white'
+                }}
               >
-                下载导入模板
+                下载Excel模板
+              </Button>
+              <Button 
+                icon={<DownloadOutlined />} 
+                onClick={() => downloadTemplate('csv')}
+                style={{
+                  background: 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)',
+                  border: 'none',
+                  color: 'white'
+                }}
+              >
+                下载CSV模板
               </Button>
               <Button 
                 type="primary"
                 icon={<InfoCircleOutlined />}
                 onClick={() => setImportModalVisible(true)}
                 disabled={!validationResult?.isValid}
+                style={{
+                  background: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 100%)',
+                  border: 'none'
+                }}
               >
                 配置导入选项
               </Button>
             </Space>
+            
+            <div style={{ marginTop: 16, padding: 12, background: '#f6f8fa', borderRadius: 6 }}>
+              <Text strong style={{ color: '#1890ff' }}>📋 模板格式说明：</Text>
+              <div style={{ marginTop: 8, fontSize: 13, lineHeight: 1.6 }}>
+                <div><strong>Excel模板 (.xlsx)：</strong>包含详细的使用说明和示例数据，推荐使用</div>
+                <div><strong>CSV模板 (.csv)：</strong>纯数据格式，适合批量编辑，兼容性好</div>
+                <div style={{ color: '#666', marginTop: 4 }}>
+                  💡 建议先下载Excel模板查看格式要求，然后根据需要选择格式进行数据填写
+                </div>
+              </div>
+            </div>
           </Card>
         </Col>
 

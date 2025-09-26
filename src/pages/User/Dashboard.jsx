@@ -268,10 +268,10 @@ const Dashboard = () => {
         </button>
       </div>
 
-      <Row gutter={[16, 16]}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         {/* 个人赞赞星统计卡片 */}
-        <Col xs={24} sm={12} md={8} lg={4}>
-          <ModernCard hoverable>
+        <Col xs={24} sm={12} md={8} lg={6} xl={4} xxl={4}>
+          <ModernCard hoverable style={{ height: '100%', minHeight: 120 }}>
             <Statistic
               title="本月可赠送"
               value={currentUser.availableToGive}
@@ -282,8 +282,8 @@ const Dashboard = () => {
           </ModernCard>
         </Col>
         
-        <Col xs={24} sm={12} md={8} lg={4}>
-          <ModernCard hoverable>
+        <Col xs={24} sm={12} md={8} lg={6} xl={4} xxl={4}>
+          <ModernCard hoverable style={{ height: '100%', minHeight: 120 }}>
             <Statistic
               title="本月获赠"
               value={currentUser?.receivedThisMonth|| 0}
@@ -294,8 +294,8 @@ const Dashboard = () => {
           </ModernCard>
         </Col>
         
-        <Col xs={24} sm={12} md={8} lg={4}>
-          <ModernCard hoverable>
+        <Col xs={24} sm={12} md={8} lg={6} xl={4} xxl={4}>
+          <ModernCard hoverable style={{ height: '100%', minHeight: 120 }}>
             <Statistic
               title="累计获赠"
               value={currentUser.receivedThisYear}
@@ -306,8 +306,8 @@ const Dashboard = () => {
           </ModernCard>
         </Col>
         
-        <Col xs={24} sm={12} md={8} lg={4}>
-          <ModernCard hoverable>
+        <Col xs={24} sm={12} md={8} lg={6} xl={4} xxl={4}>
+          <ModernCard hoverable style={{ height: '100%', minHeight: 120 }}>
             <Statistic
               title="可兑换余额"
               value={currentUser.availableToRedeem}
@@ -318,8 +318,8 @@ const Dashboard = () => {
           </ModernCard>
         </Col>
         
-        <Col xs={24} sm={12} md={8} lg={4}>
-          <ModernCard hoverable>
+        <Col xs={24} sm={12} md={8} lg={6} xl={4} xxl={4}>
+          <ModernCard hoverable style={{ height: '100%', minHeight: 120 }}>
             <Statistic
               title="当前排名"
               value={myRanking?.ranking || '--'}
@@ -334,7 +334,7 @@ const Dashboard = () => {
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         {/* 本月赠送进度 */}
         <Col xs={24} lg={12}>
-          <ModernCard title="本月赠送进度" hoverable>
+          <ModernCard title="本月赠送进度" hoverable style={{ height: '100%' }}>
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span>已赠送</span>
@@ -365,7 +365,7 @@ const Dashboard = () => {
 
         {/* 兑换统计 */}
         <Col xs={24} lg={12}>
-          <ModernCard title="年度兑换统计" hoverable>
+          <ModernCard title="年度兑换统计" hoverable style={{ height: '100%' }}>
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span>已兑换</span>
@@ -401,6 +401,7 @@ const Dashboard = () => {
           <ModernCard 
             title="最近收到的赞赞星" 
             hoverable
+            style={{ height: '100%' }}
             extra={
               <a onClick={() => fetchRecentRecords()}>刷新</a>
             }
@@ -459,6 +460,7 @@ const Dashboard = () => {
           <ModernCard 
             title="最近赠送的赞赞星" 
             hoverable
+            style={{ height: '100%' }}
             extra={
               <a onClick={() => fetchRecentRecords()}>刷新</a>
             }

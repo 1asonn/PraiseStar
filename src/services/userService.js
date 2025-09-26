@@ -322,13 +322,13 @@ export const userService = {
    * 下载导入模板
    * @returns {Promise} 下载结果
    */
-  downloadImportTemplate: async () => {
+  downloadImportTemplate: async (format = 'xlsx') => {
     try {
       // 直接使用axios实例来获取blob
       const axios = require('axios')
       const token = localStorage.getItem('token')
       
-      const response = await axios.get(`${API_CONFIG.BASE_URL}/user-data/import-template`, {
+      const response = await axios.get(`${API_CONFIG.BASE_URL}/user-data/import-template?format=${format}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -336,12 +336,19 @@ export const userService = {
         responseType: 'blob'
       })
       
+      // 根据格式设置正确的MIME类型和文件扩展名
+      const mimeType = format === 'xlsx' 
+        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        : 'text/csv;charset=utf-8'
+      
+      const fileExtension = format === 'xlsx' ? 'xlsx' : 'csv'
+      
       // 创建blob URL并下载
-      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8' })
+      const blob = new Blob([response.data], { type: mimeType })
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = 'user_import_template.csv'
+      link.download = `user_import_template.${fileExtension}`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -432,29 +439,6 @@ export const userService = {
     }
   },
 
-  /**
-   * 下载导入模板
-   * @returns {Promise} 模板文件
-   */
-  downloadImportTemplate: async () => {
-    try {
-      const token = localStorage.getItem('token')
-      const response = await axios.get(`${API_CONFIG.BASE_URL}/user-data/import-template`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        },
-        responseType: 'blob'
-      })
-      
-      return response.data
-    } catch (error) {
-      console.error('下载导入模板失败:', error)
-      throw error
-    }
-  },
 
   /**
    * 获取赞赞星统计数据
