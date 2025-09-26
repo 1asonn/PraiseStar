@@ -397,7 +397,7 @@ const LoginPage = () => {
                                 <div style={{ marginBottom: '15px' }}>
                                     <input 
                                         type="text" 
-                                        placeholder="超级管理员用户名" 
+                                        placeholder="账号" 
                                         value={superAdminForm.username}
                                         onChange={(e) => setSuperAdminForm({...superAdminForm, username: e.target.value})}
                                         style={{
@@ -412,7 +412,7 @@ const LoginPage = () => {
                                 <div style={{ marginBottom: '20px' }}>
                                     <input 
                                         type="password" 
-                                        placeholder="超级管理员密码" 
+                                        placeholder="密码" 
                                         value={superAdminForm.password}
                                         onChange={(e) => setSuperAdminForm({...superAdminForm, password: e.target.value})}
                                         style={{
@@ -438,7 +438,7 @@ const LoginPage = () => {
                                         fontSize: '14px'
                                     }}
                                 >
-                                    {loading ? '登录中...' : '超级管理员登录'}
+                                    {loading ? '登录中...' : '登录'}
                                 </button>
                             </form>
                         </div>
