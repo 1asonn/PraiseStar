@@ -45,8 +45,6 @@ const AdminUsers = () => {
   const [users, setUsers] = useState([])
   const [modalVisible, setModalVisible] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
-  const [adjustModalVisible, setAdjustModalVisible] = useState(false)
-  const [adjustingUser, setAdjustingUser] = useState(null)
   const [isMobile, setIsMobile] = useState(false)
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(true)
@@ -77,7 +75,6 @@ const AdminUsers = () => {
   const [refreshing, setRefreshing] = useState(false)
   
   const [form] = Form.useForm()
-  const [adjustForm] = Form.useForm()
   const { getAllUsers, updateUser, addUser, getDepartments } = userApi
   const listRef = useRef(null)
 
@@ -282,19 +279,6 @@ const AdminUsers = () => {
     }
   }
 
-  // 调整赞赞星
-  const handleAdjust = (user) => {
-    setAdjustingUser(user)
-    setAdjustModalVisible(true)
-    adjustForm.setFieldsValue({
-      availableToGive: user.availableToGive,
-      receivedThisMonth: user.receivedThisMonth,
-      receivedThisQuarter: user.receivedThisQuarter,
-      receivedThisYear: user.receivedThisYear,
-      redeemedThisYear: user.redeemedThisYear,
-      availableToRedeem: user.availableToRedeem
-    })
-  }
 
   // 保存用户
   const handleSave = async (values) => {
@@ -348,22 +332,6 @@ const AdminUsers = () => {
     }
   }
 
-  // 保存赞赞星调整
-  const handleSaveAdjust = async (values) => {
-    try {
-      setUsers(users.map(user => 
-        user.id === adjustingUser.id 
-          ? { ...user, ...values }
-          : user
-      ))
-      message.success('调整成功')
-      setAdjustModalVisible(false)
-      adjustForm.resetFields()
-      setAdjustingUser(null)
-    } catch (error) {
-      message.error('调整失败')
-    }
-  }
 
 
   // 处理文件导入
@@ -576,15 +544,6 @@ const AdminUsers = () => {
             onClick={() => handleAddEdit(user)}
             size="small"
             style={{ color: '#1890ff' }}
-          />
-        </Tooltip>,
-        <Tooltip title="调整赞赞星" key="adjust">
-          <Button
-            type="text"
-            icon={<StarOutlined />}
-            onClick={() => handleAdjust(user)}
-            size="small"
-            style={{ color: '#fa8c16' }}
           />
         </Tooltip>,
         <Popconfirm
@@ -925,13 +884,6 @@ const AdminUsers = () => {
               type="text"
               icon={<EditOutlined />}
               onClick={() => handleAddEdit(record)}
-            />
-          </Tooltip>
-          <Tooltip title="调整赞赞星">
-            <Button
-              type="text"
-              icon={<StarOutlined />}
-              onClick={() => handleAdjust(record)}
             />
           </Tooltip>
           <Popconfirm
@@ -1382,107 +1334,6 @@ const AdminUsers = () => {
         </Form>
       </Modal>
 
-             {/* 调整赞赞星弹窗 */}
-       <Modal
-         title={`调整赞赞星 - ${adjustingUser?.name}`}
-         open={adjustModalVisible}
-         onCancel={() => {
-           setAdjustModalVisible(false)
-           adjustForm.resetFields()
-           setAdjustingUser(null)
-         }}
-         footer={null}
-         width={isMobile ? '95%' : 500}
-         style={{ top: isMobile ? 20 : 100 }}
-       >
-                 <Form
-           form={adjustForm}
-           layout="vertical"
-           onFinish={handleSaveAdjust}
-         >
-           <Row gutter={isMobile ? 8 : 16}>
-             <Col span={isMobile ? 24 : 12}>
-               <Form.Item
-                 label="本月可赠送"
-                 name="availableToGive"
-                 rules={[{ required: true, message: '请输入数量' }]}
-               >
-                 <InputNumber
-                   min={0}
-                   style={{ width: '100%' }}
-                   addonAfter="⭐"
-                 />
-               </Form.Item>
-             </Col>
-             <Col span={isMobile ? 24 : 12}>
-               <Form.Item
-                 label="本月获赠"
-                 name="receivedThisMonth"
-                 rules={[{ required: true, message: '请输入数量' }]}
-               >
-                 <InputNumber
-                   min={0}
-                   style={{ width: '100%' }}
-                   addonAfter="⭐"
-                 />
-               </Form.Item>
-             </Col>
-           </Row>
-
-           <Row gutter={isMobile ? 8 : 16}>
-             <Col span={isMobile ? 24 : 12}>
-               <Form.Item
-                 label="年度累计获赠"
-                 name="receivedThisYear"
-                 rules={[{ required: true, message: '请输入数量' }]}
-               >
-                 <InputNumber
-                   min={0}
-                   style={{ width: '100%' }}
-                   addonAfter="⭐"
-                 />
-               </Form.Item>
-             </Col>
-             <Col span={isMobile ? 24 : 12}>
-               <Form.Item
-                 label="年度已兑换"
-                 name="redeemedThisYear"
-                 rules={[{ required: true, message: '请输入数量' }]}
-               >
-                 <InputNumber
-                   min={0}
-                   style={{ width: '100%' }}
-                   addonAfter="⭐"
-                 />
-               </Form.Item>
-             </Col>
-             <Col span={isMobile ? 24 : 12}>
-               <Form.Item
-                 label="剩余可兑换"
-                 name="availableToRedeem"
-                 rules={[{ required: true, message: '请输入数量' }]}
-               >
-                 <InputNumber
-                   min={0}
-                   style={{ width: '100%' }}
-                   addonAfter="⭐"
-                 />
-               </Form.Item>
-             </Col>
-           </Row>
-
-          <Form.Item>
-            <Space>
-              <Button onClick={() => setAdjustModalVisible(false)}>
-                取消
-              </Button>
-              <Button type="primary" htmlType="submit">
-                保存调整
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
 
       {/* 导入确认对话框 */}
       <Modal
