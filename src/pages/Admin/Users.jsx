@@ -241,12 +241,30 @@ const AdminUsers = () => {
   }
 
   // 删除用户
-  const handleDelete = (userId) => {
-    const updatedUsers = users.filter(user => user.id !== userId)
-    setUsers(updatedUsers)
-    // 更新显示的列表
-    setDisplayedUsers(prev => prev.filter(user => user.id !== userId))
-    message.success('删除成功')
+  const handleDelete = async (userId) => {
+    try {
+      setTableLoading(true)
+      const response = await userService.deleteUser(userId)
+      
+      if (response.success) {
+        // 从本地状态中移除用户
+        const updatedUsers = users.filter(user => user.id !== userId)
+        setUsers(updatedUsers)
+        setDisplayedUsers(prev => prev.filter(user => user.id !== userId))
+        
+        // 更新总数
+        setTotal(prev => prev - 1)
+        
+        message.success('用户删除成功')
+      } else {
+        message.error(response.message || '删除用户失败')
+      }
+    } catch (error) {
+      console.error('删除用户失败:', error)
+      message.error('删除用户失败，请稍后重试')
+    } finally {
+      setTableLoading(false)
+    }
   }
 
   // 重置用户密码
@@ -570,10 +588,12 @@ const AdminUsers = () => {
           />
         </Tooltip>,
         <Popconfirm
-          title="确定删除这个用户吗？"
+          title={`确定删除用户"${user.name}"吗？`}
+          description="删除后该用户将无法登录系统，此操作不可撤销。"
           onConfirm={() => handleDelete(user.id)}
-          okText="确定"
+          okText="确定删除"
           cancelText="取消"
+          okButtonProps={{ danger: true }}
           key="delete"
         >
           <Button
@@ -930,10 +950,12 @@ const AdminUsers = () => {
             </Tooltip>
           </Popconfirm>
           <Popconfirm
-            title="确定删除这个用户吗？"
+            title={`确定删除用户"${record.name}"吗？`}
+            description="删除后该用户将无法登录系统，此操作不可撤销。"
             onConfirm={() => handleDelete(record.id)}
-            okText="确定"
+            okText="确定删除"
             cancelText="取消"
+            okButtonProps={{ danger: true }}
           >
             <Tooltip title="删除用户">
               <Button
