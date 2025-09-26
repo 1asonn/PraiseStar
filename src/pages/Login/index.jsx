@@ -7,6 +7,7 @@ import 'boxicons/css/boxicons.min.css'
 import { AddSafeBottom } from '../../utils/hooks/useSafeArea'
 import { useAuth } from '../../contexts/AuthContext'
 import { passwordUtils } from '../../utils/passwordUtils'
+import { simpleEncrypt, simpleDecrypt } from '../../utils/encryptionUtils'
 
 const LoginPage = () => {
     const { login, isAuthenticated, loading: authLoading, user, loginSuperAdmin, isSuperAdmin } = useAuth()
@@ -19,6 +20,7 @@ const LoginPage = () => {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [showSuperAdminLogin, setShowSuperAdminLogin] = useState(false)
     const [superAdminForm, setSuperAdminForm] = useState({ username: '', password: '' })
+    const [rememberMe, setRememberMe] = useState(false)
     
 
         // 应用安全底部样式
@@ -26,6 +28,41 @@ const LoginPage = () => {
             if (containerRef.current) {
                 const cleanup = AddSafeBottom(FormRef.current, 0); // 底部偏移量
                 return cleanup; // 组件卸载时清理
+            }
+        }, []);
+
+        // 使用安全的XOR加密/解密函数
+        const encryptPassword = (password) => {
+            try {
+                return simpleEncrypt(password)
+            } catch (error) {
+                console.error('密码加密失败:', error)
+                return ''
+            }
+        }
+
+        const decryptPassword = (encryptedPassword) => {
+            try {
+                if (!encryptedPassword) return ''
+                return simpleDecrypt(encryptedPassword)
+            } catch (error) {
+                console.error('密码解密失败:', error)
+                return ''
+            }
+        }
+
+        // 加载保存的登录信息
+        useEffect(() => {
+            const savedLoginInfo = localStorage.getItem('rememberedLogin')
+            if (savedLoginInfo) {
+                try {
+                    const { phone, rememberMe: savedRememberMe } = JSON.parse(savedLoginInfo)
+                    setLoginForm(prev => ({ ...prev, phone }))
+                    setRememberMe(savedRememberMe)
+                    // 不直接设置密码到React状态，避免在Elements中显示
+                } catch (error) {
+                    console.error('加载保存的登录信息失败:', error)
+                }
             }
         }, []);
         
@@ -70,6 +107,20 @@ const LoginPage = () => {
             const encryptedPassword = passwordUtils.encryptPassword(loginForm.password)
             const result = await login(loginForm.phone, encryptedPassword)
             if (result.success) {
+                // 处理记住我功能
+                if (rememberMe) {
+                    // 加密密码后保存到localStorage
+                    const encryptedPassword = encryptPassword(loginForm.password)
+                    localStorage.setItem('rememberedLogin', JSON.stringify({
+                        phone: loginForm.phone,
+                        encryptedPassword: encryptedPassword,
+                        rememberMe: true
+                    }))
+                } else {
+                    // 清除保存的登录信息
+                    localStorage.removeItem('rememberedLogin')
+                }
+                
                 // 登录成功，AuthContext会自动处理重定向
                 // 不需要额外处理，避免页面闪烁
             } else {
@@ -163,11 +214,59 @@ const LoginPage = () => {
                             <input 
                                 type="password" 
                                 placeholder="Password" 
-                                value={loginForm.password}
+                                ref={(input) => {
+                                    if (input && !input.dataset.initialized) {
+                                        input.dataset.initialized = 'true'
+                                        // 如果有保存的密码，直接设置到DOM
+                                        const savedLoginInfo = localStorage.getItem('rememberedLogin')
+                                        if (savedLoginInfo) {
+                                            try {
+                                                const { encryptedPassword } = JSON.parse(savedLoginInfo)
+                                                if (encryptedPassword) {
+                                                    const decryptedPassword = decryptPassword(encryptedPassword)
+                                                    if (decryptedPassword) {
+                                                        input.value = decryptedPassword
+                                                        // 更新React状态
+                                                        setLoginForm({...loginForm, password: decryptedPassword})
+                                                    }
+                                                }
+                                            } catch (error) {
+                                                console.error('加载保存的密码失败:', error)
+                                            }
+                                        }
+                                    }
+                                }}
                                 onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
                             />
                             <i className="bx bxs-lock-alt"></i>
                         </div>
+                        
+                        {/* 记住我复选框 */}
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            marginBottom: '20px',
+                            fontSize: '14px',
+                            color: '#666'
+                        }}>
+                            <input 
+                                type="checkbox" 
+                                id="rememberMe"
+                                checked={rememberMe}
+                                onChange={(e) => setRememberMe(e.target.checked)}
+                                style={{
+                                    marginRight: '8px',
+                                    transform: 'scale(1.1)'
+                                }}
+                            />
+                            <label htmlFor="rememberMe" style={{
+                                cursor: 'pointer',
+                                userSelect: 'none'
+                            }}>
+                                记住我
+                            </label>
+                        </div>
+                        
                         <button 
                             type="submit" 
                             className={styles.btn}
