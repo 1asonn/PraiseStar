@@ -119,13 +119,13 @@ export const AuthProvider = ({ children }) => {
         
         return { success: true, user: response.data.user }
       } else {
-        message.error(response.message || '登录失败')
+        // 不在这里显示错误消息，让调用方处理
         return { success: false, message: response.message || '登录失败' }
       }
     } catch (error) {
       console.error('登录失败:', error)
       const errorMessage = error.message || '登录失败，请稍后重试'
-      message.error(errorMessage)
+      // 不在这里显示错误消息，让调用方处理
       return { success: false, message: errorMessage }
     } finally {
       setLoading(false)

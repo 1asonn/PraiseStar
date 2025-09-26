@@ -967,7 +967,7 @@ const Ranking = () => {
       return (
         <div>
           {/* 摘要信息 */}
-          {summary && (
+          {/* {summary && (
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
               <Col xs={24} sm={6}>
                 <ModernCard hoverable>
@@ -1012,7 +1012,7 @@ const Ranking = () => {
                 </ModernCard>
               </Col>
             </Row>
-          )}
+          )} */}
           
           {/* 词条筛选 */}
           {summary?.keywordSummary && (
