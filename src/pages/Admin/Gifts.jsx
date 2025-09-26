@@ -29,7 +29,6 @@ import {
   EditOutlined,
   DeleteOutlined,
   UploadOutlined,
-  DownloadOutlined,
   GiftOutlined,
   ShoppingCartOutlined,
   EyeOutlined,
@@ -367,29 +366,6 @@ const AdminGifts = () => {
     setImageFile(null)
   }
 
-  // 导出兑换明细
-  const handleExportRedemptions = async () => {
-    try {
-      const response = await giftsService.exportGiftData({
-        type: 'redemptions'
-      })
-      if (response.success) {
-        // 创建下载链接
-        const link = document.createElement('a')
-        link.href = response.data.downloadUrl
-        link.download = `兑换明细_${dayjs().format('YYYY-MM-DD')}.xlsx`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        message.success('兑换明细导出成功')
-      } else {
-        message.error(response.message || '导出失败')
-      }
-    } catch (error) {
-      console.error('导出兑换明细失败:', error)
-      message.error('导出失败')
-    }
-  }
 
   // 查看兑换记录详情
   const handleViewRedemptionDetail = (redemption) => {
@@ -1052,12 +1028,6 @@ const AdminGifts = () => {
                   loading={redemptionsLoading}
                 >
                   刷新
-                </Button>
-                <Button
-                  icon={<DownloadOutlined />}
-                  onClick={handleExportRedemptions}
-                >
-                  导出明细
                 </Button>
               </Space>
             }

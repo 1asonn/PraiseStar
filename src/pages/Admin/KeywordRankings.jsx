@@ -69,7 +69,6 @@ const KeywordRankings = () => {
 
   // 获取词条排行榜数据
   const fetchRankings = async (page = 1, keyword = '') => {
-    setLoading(true)
     try {
       const token = localStorage.getItem('token')
       const params = new URLSearchParams({
@@ -106,8 +105,6 @@ const KeywordRankings = () => {
     } catch (error) {
       console.error('获取词条排行榜失败:', error)
       message.error('获取排行榜失败')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -141,8 +138,21 @@ const KeywordRankings = () => {
 
   // 初始化数据
   useEffect(() => {
-    fetchRankings()
-    fetchSummary()
+    const loadData = async () => {
+      setLoading(true)
+      try {
+        await Promise.all([
+          fetchRankings(),
+          fetchSummary()
+        ])
+      } catch (error) {
+        console.error('加载数据失败:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    loadData()
   }, [filters.period])
 
   // 处理搜索
@@ -157,15 +167,41 @@ const KeywordRankings = () => {
   }
 
   // 处理周期切换
-  const handlePeriodChange = (period) => {
+  const handlePeriodChange = async (period) => {
     setFilters(prev => ({ ...prev, period }))
     setPagination(prev => ({ ...prev, current: 1 }))
+    
+    // 清空当前数据，避免显示旧数据
+    setRankings([])
+    setSummary(null)
+    
+    // 加载新数据
+    setLoading(true)
+    try {
+      await Promise.all([
+        fetchRankings(1, ''),
+        fetchSummary()
+      ])
+    } catch (error) {
+      console.error('切换周期加载数据失败:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   // 刷新数据
-  const handleRefresh = () => {
-    fetchRankings(pagination.current, filters.keyword)
-    fetchSummary()
+  const handleRefresh = async () => {
+    setLoading(true)
+    try {
+      await Promise.all([
+        fetchRankings(pagination.current, filters.keyword),
+        fetchSummary()
+      ])
+    } catch (error) {
+      console.error('刷新数据失败:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   // 移动端表格列定义
@@ -463,14 +499,14 @@ const KeywordRankings = () => {
 
   // 获取统计概览数据
   const getOverviewStats = () => {
-    if (!summary) return null
+    if (!summary || !summary.data) return null
     
     return {
-      totalUsers: summary.summary?.total_users || 0,
-      activeUsers: summary.summary?.active_users || 0,
-      totalKeywords: summary.summary?.total_keywords || 0,
-      totalRecords: summary.summary?.total_records || 0,
-      userActivityRate: summary.summary?.user_activity_rate || 0
+      totalUsers: summary.data.summary?.total_users || 0,
+      activeUsers: summary.data.summary?.active_users || 0,
+      totalKeywords: summary.data.summary?.total_keywords || 0,
+      totalRecords: summary.data.summary?.total_records || 0,
+      userActivityRate: summary.data.summary?.user_activity_rate || 0
     }
   }
 
@@ -830,12 +866,17 @@ const KeywordRankings = () => {
               label: '词条统计',
               children: (
                 <div>
-                  {summary && summary.keywordSummary && (
+                  {loading ? (
+                    <div style={{ textAlign: 'center', padding: '40px' }}>
+                      <Spin size="large" />
+                      <div style={{ marginTop: '16px', color: '#666' }}>加载词条统计数据中...</div>
+                    </div>
+                  ) : summary && summary.data && summary.data.keywordSummary && summary.data.keywordSummary.length > 0 ? (
                     <div>
           {isMobile ? (
                         // 移动端卡片列表
             <div>
-              {summary.keywordSummary.map((item, index) => (
+              {summary.data.keywordSummary.map((item, index) => (
                 <Card 
                   key={item.keyword}
                   size="small" 
@@ -877,13 +918,26 @@ const KeywordRankings = () => {
             // 桌面端表格
             <Table
               columns={desktopKeywordColumns}
-              dataSource={summary.keywordSummary}
+              dataSource={summary.data.keywordSummary}
               rowKey="keyword"
               pagination={false}
               scroll={{ x: 600 }}
               size="small"
             />
           )}
+                    </div>
+                  ) : (
+                    <div style={{ 
+                      textAlign: 'center', 
+                      padding: '40px',
+                      color: '#666'
+                    }}>
+                      <div style={{ fontSize: '16px', marginBottom: '8px' }}>
+                        暂无词条统计数据
+                      </div>
+                      <div style={{ fontSize: '14px' }}>
+                        请选择其他时间周期或稍后再试
+                      </div>
                     </div>
                   )}
                 </div>
@@ -895,7 +949,7 @@ const KeywordRankings = () => {
 
 
       {/* 热门词条 */}
-      {summary && summary.topKeywords && summary.topKeywords.length > 0 && (
+      {summary && summary.data && summary.data.topKeywords && summary.data.topKeywords.length > 0 && (
         <Card 
           title={
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -906,7 +960,7 @@ const KeywordRankings = () => {
           style={{ marginTop: '24px' }}
         >
           <Row gutter={isMobile ? [8, 8] : [16, 16]}>
-            {summary.topKeywords.map((keyword, index) => (
+            {summary.data.topKeywords.map((keyword, index) => (
               <Col xs={12} sm={8} md={4} key={keyword.keyword}>
                 <Card size="small" style={{ textAlign: 'center' }}>
                   <div style={{ 
