@@ -48,6 +48,7 @@ const ImportCenter = () => {
     updateExisting: false,
     defaultPassword: '123456'
   })
+  const [form] = Form.useForm()
 
   // 重置导入状态
   const resetImportState = () => {
@@ -104,6 +105,14 @@ const ImportCenter = () => {
   const executeImport = async () => {
     if (!fileList[0]) {
       message.error('请先选择文件')
+      return
+    }
+
+    // 验证表单
+    try {
+      await form.validateFields()
+    } catch (error) {
+      message.error('请检查表单填写是否正确')
       return
     }
 
@@ -474,7 +483,7 @@ const ImportCenter = () => {
         cancelText="取消"
         width={500}
       >
-        <Form layout="vertical">
+        <Form form={form} layout="vertical" initialValues={importSettings}>
           <Form.Item label="更新已存在用户">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Switch
@@ -493,18 +502,30 @@ const ImportCenter = () => {
             </div>
           </Form.Item>
           
-          <Form.Item label="默认密码">
+          <Form.Item 
+            label="默认密码" 
+            name="defaultPassword"
+            rules={[
+              { required: true, message: '请输入默认密码' },
+              { min: 6, message: '密码长度不能少于6位' },
+              { max: 20, message: '密码长度不能超过20位' }
+            ]}
+          >
             <Input
               value={importSettings.defaultPassword}
-              onChange={(e) => setImportSettings(prev => ({
-                ...prev,
-                defaultPassword: e.target.value
-              }))}
+              onChange={(e) => {
+                const value = e.target.value
+                setImportSettings(prev => ({
+                  ...prev,
+                  defaultPassword: value
+                }))
+                form.setFieldsValue({ defaultPassword: value })
+              }}
               placeholder="请输入默认密码"
               style={{ width: '100%' }}
             />
             <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
-              新用户的初始密码，建议使用强密码
+              新用户的初始密码，建议使用强密码（6-20位）
             </div>
           </Form.Item>
         </Form>

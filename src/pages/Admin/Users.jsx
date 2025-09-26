@@ -249,6 +249,21 @@ const AdminUsers = () => {
     message.success('删除成功')
   }
 
+  // 重置用户密码
+  const handleResetPassword = async (userId, userName) => {
+    try {
+      const response = await userService.resetUserPassword(userId)
+      if (response.success) {
+        message.success(`用户 ${userName} 的密码已重置为默认密码 123456`)
+      } else {
+        message.error(response.message || '重置密码失败')
+      }
+    } catch (error) {
+      console.error('重置密码失败:', error)
+      message.error('重置密码失败，请稍后重试')
+    }
+  }
+
   // 调整赞赞星
   const handleAdjust = (user) => {
     setAdjustingUser(user)
@@ -899,6 +914,21 @@ const AdminUsers = () => {
               onClick={() => handleAdjust(record)}
             />
           </Tooltip>
+          <Popconfirm
+            title="确定重置该用户的密码吗？"
+            description="密码将重置为默认密码 123456"
+            onConfirm={() => handleResetPassword(record.id, record.name)}
+            okText="确定重置"
+            cancelText="取消"
+          >
+            <Tooltip title="重置密码">
+              <Button
+                type="text"
+                icon={<KeyOutlined />}
+                style={{ color: '#fa8c16' }}
+              />
+            </Tooltip>
+          </Popconfirm>
           <Popconfirm
             title="确定删除这个用户吗？"
             onConfirm={() => handleDelete(record.id)}

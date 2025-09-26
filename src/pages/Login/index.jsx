@@ -104,7 +104,7 @@ const LoginPage = () => {
         
         try {
             // 对密码进行MD5加密
-            const encryptedPassword = passwordUtils.encryptPassword(loginForm.password)
+            const encryptedPassword = passwordUtils.encryptPassword(loginForm.password)   
             const result = await login(loginForm.phone, encryptedPassword)
             if (result.success) {
                 // 处理记住我功能

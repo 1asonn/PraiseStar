@@ -441,6 +441,21 @@ export const userService = {
 
 
   /**
+   * 重置用户密码（管理员）
+   * @param {number} userId - 用户ID
+   * @returns {Promise} 重置结果
+   */
+  resetUserPassword: async (userId) => {
+    try {
+      const response = await api.post(`/users/${userId}/reset-password`)
+      return response
+    } catch (error) {
+      console.error('重置用户密码失败:', error)
+      throw error
+    }
+  },
+
+  /**
    * 获取赞赞星统计数据
    * @returns {Promise} 统计数据
    */
