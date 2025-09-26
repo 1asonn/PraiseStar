@@ -700,15 +700,15 @@ const Record = () => {
              </Tag>
            </Space>
          }
-         extra={
-           !isMobile && (
-             <Tooltip title="导出记录">
-               <Button icon={<DownloadOutlined />} disabled={records.length === 0}>
-                 导出
-               </Button>
-             </Tooltip>
-           )
-         }
+        //  extra={
+        //    !isMobile && (
+        //      <Tooltip title="导出记录">
+        //        <Button icon={<DownloadOutlined />} disabled={records.length === 0}>
+        //          导出
+        //        </Button>
+        //      </Tooltip>
+        //    )
+        //  }
        >
                    {isMobile ? (
             renderMobileCardList()
