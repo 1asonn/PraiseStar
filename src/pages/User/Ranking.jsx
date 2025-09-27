@@ -30,59 +30,49 @@ const Ranking = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const [rankings, setRankings] = useState({
     year: [],
-    month: [],
-    quarter: []
+    month: []
   })
   // 移动端无限滚动状态
   const [mobileLoading, setMobileLoading] = useState({
     year: false,
-    month: false,
-    quarter: false
+    month: false
   })
   const [hasMore, setHasMore] = useState({
     year: true,
-    month: true,
-    quarter: true
+    month: true
   })
   const [myRanking, setMyRanking] = useState({
     year: null,
-    month: null,
-    quarter: null
+    month: null
   })
   const [pagination, setPagination] = useState({
     year: { current: 1, pageSize: 10, total: 0 },
-    month: { current: 1, pageSize: 10, total: 0 },
-    quarter: { current: 1, pageSize: 10, total: 0 }
+    month: { current: 1, pageSize: 10, total: 0 }
   })
   const [currentUserRanking, setCurrentUserRanking] = useState({
     year: null,
-    month: null,
-    quarter: null
+    month: null
   })
   const [forceUpdate, setForceUpdate] = useState(0)
   
   // 词条排行榜相关状态
   const [keywordRankings, setKeywordRankings] = useState({
     year: [],
-    month: [],
-    quarter: []
+    month: []
   })
   const [keywordLoading, setKeywordLoading] = useState(false)
   const [keywordSummary, setKeywordSummary] = useState({
     year: null,
-    month: null,
-    quarter: null
+    month: null
   })
   const [selectedKeyword, setSelectedKeyword] = useState('')
   const [keywordPagination, setKeywordPagination] = useState({
     year: { current: 1, pageSize: 10, total: 0 },
-    month: { current: 1, pageSize: 10, total: 0 },
-    quarter: { current: 1, pageSize: 10, total: 0 }
+    month: { current: 1, pageSize: 10, total: 0 }
   })
   const [keywordError, setKeywordError] = useState({
     year: null,
-    month: null,
-    quarter: null
+    month: null
   })
 
   // 获取排名数据
@@ -318,18 +308,14 @@ const Ranking = () => {
     if (user?.id) {
       fetchRankings('year')
       fetchRankings('month')
-      fetchRankings('quarter')
       fetchMyRanking('year')
       fetchMyRanking('month')
-      fetchMyRanking('quarter')
       
       // 获取词条排行榜数据
       fetchKeywordRankings('year')
       fetchKeywordRankings('month')
-      fetchKeywordRankings('quarter')
       fetchKeywordSummary('year')
       fetchKeywordSummary('month')
-      fetchKeywordSummary('quarter')
     }
   }, [user?.id])
 
@@ -339,13 +325,11 @@ const Ranking = () => {
       // 重置分页到第一页
       setKeywordPagination(prev => ({
         year: { ...prev.year, current: 1 },
-        month: { ...prev.month, current: 1 },
-        quarter: { ...prev.quarter, current: 1 }
+        month: { ...prev.month, current: 1 }
       }))
       
       fetchKeywordRankings('year', 1, 10)
       fetchKeywordRankings('month', 1, 10)
-      fetchKeywordRankings('quarter', 1, 10)
     }
   }, [selectedKeyword])
 
@@ -362,7 +346,6 @@ const Ranking = () => {
   // 获取当前用户在各个排名中的位置
   const userYearRank = myRanking.year
   const userMonthRank = myRanking.month
-  const userQuarterRank = myRanking.quarter
 
   // 简化的词条排行榜卡片组件
   const KeywordRankingCard = ({ keywordData }) => (
@@ -613,11 +596,6 @@ const Ranking = () => {
                 color: '#666',
                 border: '1px solid #e8e8e8'
               }}>{item.department}</Tag>
-              <Tag color="default" size="small" style={{ 
-                backgroundColor: '#f5f5f5',
-                color: '#666',
-                border: '1px solid #e8e8e8'
-              }}>{item.position}</Tag>
             </div>
           </div>
         </div>
@@ -736,19 +714,6 @@ const Ranking = () => {
           color: '#666',
           border: '1px solid #e8e8e8'
         }}>{department}</Tag>
-      )
-    },
-    {
-      title: '职位',
-      dataIndex: 'position',
-      key: 'position',
-      responsive: ['xl'], // 超大屏幕以上显示
-      render: (position) => (
-        <Tag color="default" style={{ 
-          backgroundColor: '#f5f5f5',
-          color: '#666',
-          border: '1px solid #e8e8e8'
-        }}>{position}</Tag>
       )
     },
     {
@@ -1253,11 +1218,6 @@ const Ranking = () => {
               label: '本月排名',
               children: renderRankingContent('month')
             },
-            {
-              key: 'quarter',
-              label: '本季度排名',
-              children: renderRankingContent('quarter')
-            }
           ]}
         />
       )
@@ -1280,11 +1240,6 @@ const Ranking = () => {
               label: '本月词条',
               children: renderKeywordRankingContent('month')
             },
-            {
-              key: 'quarter',
-              label: '本季度词条',
-              children: renderKeywordRankingContent('quarter')
-            }
           ]}
         />
       )
@@ -1295,7 +1250,7 @@ const Ranking = () => {
     <div>
       {/* 个人排名概览 */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={8}>
+        <Col xs={24} sm={12}>
           <ModernCard hoverable>
             <Statistic
               title="本月排名"
@@ -1317,29 +1272,7 @@ const Ranking = () => {
           </ModernCard>
         </Col>
         
-        <Col xs={24} sm={8}>
-          <ModernCard hoverable>
-            <Statistic
-              title="季度排名"
-              value={myRanking.quarter?.ranking || currentUserRanking.quarter || '-'}
-              prefix={<TrophyOutlined style={{ color: '#52c41a' }} />}
-              suffix="位"
-              valueStyle={{ color: '#52c41a', fontSize: isMobile ? 20 : 24 }}
-            />
-            <div style={{ marginTop: 8, fontSize: isMobile ? 11 : 12, color: '#666' }}>
-              本季度获赞 {myRanking.quarter?.received_stars || 0} ⭐
-            </div>
-            <div style={{ marginTop: 4, fontSize: isMobile ? 10 : 11, color: '#52c41a', minHeight: isMobile ? 12 : 14 }}>
-              {myRanking.quarter?.quarterly_highlights ? (
-                `比上季度 ${myRanking.quarter.quarterly_highlights.growth_percentage > 0 ? '增长' : '下降'} ${Math.abs(myRanking.quarter.quarterly_highlights.growth_percentage)}%`
-              ) : (
-                <span style={{ opacity: 0 }}>占位</span>
-              )}
-            </div>
-          </ModernCard>
-        </Col>
-        
-        <Col xs={24} sm={8}>
+        <Col xs={24} sm={12}>
           <ModernCard hoverable>
             <Statistic
               title="年度排名"
