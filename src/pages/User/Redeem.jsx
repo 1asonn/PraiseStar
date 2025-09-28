@@ -173,7 +173,7 @@ const Redeem = () => {
           <Card className="card-shadow">
             <Statistic
               title="年度累计获赠"
-              value={user.receivedThisYear}
+              value={user.receivedTotal}
               prefix={<TrophyOutlined style={{ color: '#fa8c16' }} />}
               suffix={<StarIcon color="#fa8c16" />}
               valueStyle={{ color: '#fa8c16' }}

@@ -298,7 +298,7 @@ const Dashboard = () => {
           <ModernCard hoverable style={{ height: '100%', minHeight: 120 }}>
             <Statistic
               title="累计获赠"
-              value={currentUser.receivedThisYear}
+              value={currentUser.receivedTotal}
               prefix={<LikeOutlined style={{ color: '#1890ff' }} />}
               suffix={<StarIcon color="#1890ff" />}
               valueStyle={{ color: '#1890ff' }}
