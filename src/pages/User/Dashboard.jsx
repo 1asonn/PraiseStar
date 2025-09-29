@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Row, Col, Card, Statistic, Progress, List, Avatar, Tag, Space, Spin, message } from 'antd'
 import ModernCard from '../../components/ModernCard'
 import ModernLoading from '../../components/ModernLoading'
@@ -42,6 +42,10 @@ const Dashboard = () => {
   const [monthlyHighlights, setMonthlyHighlights] = useState(null)
   const [error, setError] = useState(null)
   const [currentUser, setCurrentUser] = useState(user)
+  
+  // 使用 ref 防止重复请求
+  const isInitialized = useRef(false)
+  const lastUserId = useRef(null)
 
   // 获取最新的用户信息
   const fetchUserProfile = async () => {
@@ -49,8 +53,10 @@ const Dashboard = () => {
       const response = await userService.getProfile()
       if (response.success) {
         setCurrentUser(response.data)
-        // 更新AuthContext中的用户信息
-        updateUser(response.data)
+        // 只在用户信息真正发生变化时才更新AuthContext
+        if (JSON.stringify(user) !== JSON.stringify(response.data)) {
+          updateUser(response.data)
+        }
       }
     } catch (error) {
       console.error('获取用户信息失败:', error)
@@ -133,7 +139,7 @@ const Dashboard = () => {
 
   // 组件加载时获取数据
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && (!isInitialized.current || lastUserId.current !== user.id)) {
       const loadInitialData = async () => {
         setLoading(true)
         try {
@@ -142,6 +148,8 @@ const Dashboard = () => {
             fetchRecentRecords(),
             fetchMyRanking()
           ])
+          isInitialized.current = true
+          lastUserId.current = user.id
         } catch (error) {
           console.error('加载初始数据失败:', error)
         } finally {
@@ -150,7 +158,7 @@ const Dashboard = () => {
       }
       loadInitialData()
     }
-  }, [user?.id])
+  }, [user?.id]) // 只依赖 user.id，避免整个 user 对象变化导致重复请求
 
   // 计算进度百分比
   const giveProgress = Math.round(((currentUser.monthlyAllocation - currentUser.availableToGive) / currentUser.monthlyAllocation) * 100)
