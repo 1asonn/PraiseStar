@@ -22,9 +22,7 @@ if (process.env.NODE_ENV === 'development') {
 dayjs.locale('zh-cn')
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <ConfigProvider locale={zhCN}>
-      <App />
-    </ConfigProvider>
-  </React.StrictMode>
+  <ConfigProvider locale={zhCN}>
+    <App />
+  </ConfigProvider>
 )
