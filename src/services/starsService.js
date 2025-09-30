@@ -140,6 +140,23 @@ export const starsService = {
   },
 
   /**
+   * 获取用户赞赞星统计数据（支持本周、本月、本年筛选）
+   * @param {Object} params - 查询参数
+   * @param {string} params.period - 时间范围: week(本周), month(本月), year(本年)
+   * @param {number} params.userId - 用户ID（可选，管理员可查询其他用户）
+   * @returns {Promise} 统计数据
+   */
+  getUserStats: async (params = {}) => {
+    try {
+      const response = await api.get('/stars/user-stats', params)
+      return response
+    } catch (error) {
+      console.error('获取用户统计数据失败:', error)
+      throw error
+    }
+  },
+
+  /**
    * 获取赞赞星流水记录
    * @param {Object} params - 查询参数
    * @param {number} params.page - 页码

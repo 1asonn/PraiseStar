@@ -16,7 +16,8 @@ import {
   Tabs,
   Empty,
   Tooltip,
-  List
+  List,
+  Radio
 } from 'antd'
 import {
   StarOutlined,
@@ -26,7 +27,8 @@ import {
   FilterOutlined,
   DownloadOutlined,
   HistoryOutlined,
-  UserOutlined
+  UserOutlined,
+  BarChartOutlined
 } from '@ant-design/icons'
 import { useAuth } from '../../contexts/AuthContext'
 import { starsService } from '../../services/starsService'
@@ -54,15 +56,30 @@ const Record = () => {
   const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [records, setRecords] = useState([])
-  const [summary, setSummary] = useState({
-    totalReceived: 0,
-    totalGiven: 0,
-    totalReceivedCount: 0,
-    totalGivenCount: 0
-  })
+  const [totalRecords, setTotalRecords] = useState(0)
+  const [statsData, setStatsData] = useState(null) // 统计数据
+  const [period, setPeriod] = useState('month') // 时间范围筛选
+  const [statsLoading, setStatsLoading] = useState(false) // 统计数据加载状态
 
-  // 根据筛选条件计算显示的统计数据
+  // 根据筛选条件显示统计数据
   const getDisplaySummary = () => {
+    if (!statsData) {
+      return {
+        totalReceived: 0,
+        totalGiven: 0,
+        totalReceivedCount: 0,
+        totalGivenCount: 0
+      }
+    }
+
+    const { statistics } = statsData
+    const summary = {
+      totalReceived: statistics.received.total || 0,
+      totalGiven: statistics.given.total || 0,
+      totalReceivedCount: statistics.received.count || 0,
+      totalGivenCount: statistics.given.count || 0
+    }
+
     if (filters.type === 'received') {
       return {
         totalReceived: summary.totalReceived,
@@ -87,8 +104,8 @@ const Record = () => {
   
   // 筛选状态
   const [filters, setFilters] = useState({
-    type: 'all', // all, received, given
-    timeRange: 'month', // day, week, month, year, custom
+    type: 'all', // all, received, sent
+    timeRange: 'month', // week, month, year, custom
     startDate: null,
     endDate: null
   })
@@ -98,6 +115,24 @@ const Record = () => {
   const [loadingMore, setLoadingMore] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
+
+
+  // 获取用户统计数据
+  const fetchUserStats = async (selectedPeriod = period) => {
+    try {
+      setStatsLoading(true)
+      const response = await starsService.getUserStats({ period: selectedPeriod })
+
+      if (response.success) {
+        setStatsData(response.data)
+      }
+    } catch (error) {
+      console.error('获取统计数据失败:', error)
+      message.error('获取统计数据失败，请稍后重试')
+    } finally {
+      setStatsLoading(false)
+    }
+  }
 
   // 获取记录数据
   const fetchRecords = async (page = 1, append = false) => {
@@ -125,13 +160,9 @@ const Record = () => {
         params.startDate = filters.startDate.format('YYYY-MM-DD')
         params.endDate = filters.endDate.format('YYYY-MM-DD')
       } else {
-        // 根据时间范围类型设置默认时间
+        // 根据新的period状态设置时间范围
         const now = dayjs()
-        switch (filters.timeRange) {
-          case 'day':
-            params.startDate = now.format('YYYY-MM-DD')
-            params.endDate = now.format('YYYY-MM-DD')
-            break
+        switch (period) {
           case 'week':
             params.startDate = now.startOf('week').format('YYYY-MM-DD')
             params.endDate = now.endOf('week').format('YYYY-MM-DD')
@@ -149,33 +180,27 @@ const Record = () => {
         }
       }
 
+      console.log('获取记录数据，时间范围:', period, '参数:', params)
+
       const response = await starsService.getGiveRecords(params)
-      
+
       if (response.success) {
-        const newRecords = response.data.records || response.data || []
-        
+        // 后端返回的数据结构：{ data: [...], pagination: { total, ... } }
+        const newRecords = response.data || []
+
+        // 设置总记录数（从pagination对象中获取）
+        if (response.pagination?.total !== undefined) {
+          setTotalRecords(response.pagination.total)
+        }
+
         if (append) {
           setRecords(prev => [...prev, ...newRecords])
         } else {
           setRecords(newRecords)
         }
-        
+
         // 检查是否还有更多数据
-        setHasMore(newRecords.length === pageSize)
-        
-        // 计算汇总数据（只在第一页时计算）
-        if (page === 1) {
-          const recordsData = response.data.records || response.data || []
-          const receivedRecords = recordsData.filter(record => record.to_user_id === user.id)
-          const givenRecords = recordsData.filter(record => record.from_user_id === user.id)
-          
-          setSummary({
-            totalReceived: receivedRecords.reduce((sum, record) => sum + record.stars, 0),
-            totalGiven: givenRecords.reduce((sum, record) => sum + record.stars, 0),
-            totalReceivedCount: receivedRecords.length,
-            totalGivenCount: givenRecords.length
-          })
-        }
+        setHasMore(response.pagination?.hasNext || false)
       }
     } catch (error) {
       console.error('获取记录失败:', error)
@@ -195,11 +220,23 @@ const Record = () => {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // 组件加载时获取数据
+  // 组件加载时获取统计数据和记录数据
   useEffect(() => {
-    setCurrentPage(1)
-    fetchRecords(1, false)
+    if (user?.id) {
+      fetchUserStats() // 获取统计数据
+      setCurrentPage(1)
+      fetchRecords(1, false) // 获取记录列表
+    }
   }, [user?.id, filters])
+
+  // 当时间范围改变时，重新获取统计数据和记录数据
+  useEffect(() => {
+    if (user?.id && period) {
+      fetchUserStats(period)
+      setCurrentPage(1)
+      fetchRecords(1, false)
+    }
+  }, [period])
 
   // 加载更多数据
   const loadMore = useCallback(async () => {
@@ -238,6 +275,7 @@ const Record = () => {
       startDate: null,
       endDate: null
     })
+    setPeriod('month') // 重置时间范围筛选器
   }
 
   // 格式化时间
@@ -316,6 +354,7 @@ const Record = () => {
       title: '用户',
       dataIndex: 'user',
       key: 'user',
+      width: 100,
       render: (_, record) => {
         const isReceived = record.to_user_id === user?.id
         const userName = isReceived ? record.from_user_name : record.to_user_name
@@ -361,7 +400,7 @@ const Record = () => {
   const pagination = {
     current: currentPage,
     pageSize: pageSize,
-    total: records.length + (hasMore ? pageSize : 0), // 估算总数
+    total: totalRecords, // 使用后端返回的真实总数
     showSizeChanger: true,
     showQuickJumper: true,
     showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
@@ -564,17 +603,16 @@ const Record = () => {
                <label style={{ display: 'block', marginBottom: 4, color: '#666', fontSize: isMobile ? 12 : 14 }}>
                  时间范围
                </label>
-               <Select
-                 value={filters.timeRange}
-                 onChange={(value) => handleFilterChange('timeRange', value)}
-                 style={{ width: '100%' }}
+               <Radio.Group
+                 value={period}
+                 onChange={(e) => setPeriod(e.target.value)}
                  size={isMobile ? 'small' : 'middle'}
+                 style={{ width: '100%' }}
                >
-                 <Option value="day">今天</Option>
-                 <Option value="week">本周</Option>
-                 <Option value="month">本月</Option>
-                 <Option value="year">今年</Option>
-               </Select>
+                 <Radio.Button value="week">本周</Radio.Button>
+                 <Radio.Button value="month">本月</Radio.Button>
+                 <Radio.Button value="year">本年</Radio.Button>
+               </Radio.Group>
              </div>
            </Col>
            
@@ -618,14 +656,18 @@ const Record = () => {
            const showReceived = filters.type === 'all' || filters.type === 'received'
            const showGiven = filters.type === 'all' || filters.type === 'sent'
            
+           // 显示当前时间范围信息
+           const periodInfo = statsData?.period
+           const periodName = periodInfo?.name || '本月'
+           
            return (
              <>
                {showReceived && (
                  <>
                    <Col xs={12} sm={12} lg={6}>
-                     <Card size={isMobile ? 'small' : 'default'}>
+                     <Card size={isMobile ? 'small' : 'default'} loading={statsLoading}>
                        <Statistic
-                         title={<span style={{ fontSize: isMobile ? 12 : 14 }}>收到赞赞星</span>}
+                         title={<span style={{ fontSize: isMobile ? 12 : 14 }}>{periodName}收到赞赞星</span>}
                          value={displaySummary.totalReceived}
                          prefix={<StarOutlined style={{ color: '#1890ff' }} />}
                          suffix={<StarIcon color="#1890ff" />}
@@ -637,9 +679,9 @@ const Record = () => {
                      </Card>
                    </Col>
                    <Col xs={12} sm={12} lg={6}>
-                     <Card size={isMobile ? 'small' : 'default'}>
+                     <Card size={isMobile ? 'small' : 'default'} loading={statsLoading}>
                        <Statistic
-                         title={<span style={{ fontSize: isMobile ? 12 : 14 }}>收到次数</span>}
+                         title={<span style={{ fontSize: isMobile ? 12 : 14 }}>{periodName}收到次数</span>}
                          value={displaySummary.totalReceivedCount}
                          prefix={<StarOutlined style={{ color: '#1890ff' }} />}
                          suffix="次"
@@ -655,9 +697,9 @@ const Record = () => {
                {showGiven && (
                  <>
                    <Col xs={12} sm={12} lg={6}>
-                     <Card size={isMobile ? 'small' : 'default'}>
+                     <Card size={isMobile ? 'small' : 'default'} loading={statsLoading}>
                        <Statistic
-                         title={<span style={{ fontSize: isMobile ? 12 : 14 }}>赠送赞赞星</span>}
+                         title={<span style={{ fontSize: isMobile ? 12 : 14 }}>{periodName}赠送赞赞星</span>}
                          value={displaySummary.totalGiven}
                          prefix={<SendOutlined style={{ color: '#52c41a' }} />}
                          suffix={<StarIcon color="#52c41a" />}
@@ -669,9 +711,9 @@ const Record = () => {
                      </Card>
                    </Col>
                    <Col xs={12} sm={12} lg={6}>
-                     <Card size={isMobile ? 'small' : 'default'}>
+                     <Card size={isMobile ? 'small' : 'default'} loading={statsLoading}>
                        <Statistic
-                         title={<span style={{ fontSize: isMobile ? 12 : 14 }}>赠送次数</span>}
+                         title={<span style={{ fontSize: isMobile ? 12 : 14 }}>{periodName}赠送次数</span>}
                          value={displaySummary.totalGivenCount}
                          prefix={<SendOutlined style={{ color: '#52c41a' }} />}
                          suffix="次"

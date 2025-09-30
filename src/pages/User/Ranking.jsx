@@ -660,7 +660,6 @@ const Ranking = () => {
       title: '排名',
       dataIndex: 'ranking',
       key: 'ranking',
-      width: 80,
       align: 'center',
       responsive: ['md'], // 中等屏幕以上显示
       render: (ranking, record) => (
@@ -680,6 +679,7 @@ const Ranking = () => {
       title: '姓名',
       dataIndex: 'name',
       key: 'name',
+      align: 'center',
       render: (name, record) => (
         <div>
           <span style={{ 
@@ -708,6 +708,7 @@ const Ranking = () => {
       dataIndex: 'department',
       key: 'department',
       responsive: ['lg'], // 大屏幕以上显示
+      align: 'center',
       render: (department) => (
         <Tag color="default" style={{ 
           backgroundColor: '#f5f5f5',
@@ -720,7 +721,7 @@ const Ranking = () => {
       title: '获赞数量',
       dataIndex: 'received_stars',
       key: 'received_stars',
-      align: 'right',
+      align: 'center',
       render: (stars, record) => (
         <Space>
           <StarOutlined style={{ color: '#fadb14' }} />
