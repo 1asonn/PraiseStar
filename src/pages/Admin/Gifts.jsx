@@ -1406,7 +1406,7 @@ const AdminGifts = () => {
          </Form>
        </Modal>
 
-       <style jsx="true">{`
+       <style>{`
         :global(.gift-uploader .ant-upload) {
           width: 100px !important;
           height: 100px !important;

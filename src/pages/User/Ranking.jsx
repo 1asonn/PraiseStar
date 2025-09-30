@@ -1314,7 +1314,7 @@ const Ranking = () => {
         </div>
       </ModernCard>
 
-      <style jsx="true">{`
+      <style>{`
         :global(.user-row) {
           background-color: #e6f7ff !important;
         }

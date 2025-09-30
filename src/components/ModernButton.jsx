@@ -74,7 +74,7 @@ const ModernButton = ({
       {...props}
     >
       {children}
-      <style jsx>{`
+      <style>{`
         .ant-btn:hover {
           ${Object.entries(getHoverStyle()).map(([key, value]) => `${key}: ${value};`).join('')}
         }
